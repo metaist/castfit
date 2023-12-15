@@ -1,7 +1,7 @@
-"""Basic type casting.
+"""castfit: basic type casting
 
 .. include:: ../../README.md
-   :start-line: 4
+   :start-line: 2
 """
 
 # std
