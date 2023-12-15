@@ -1,0 +1,23 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "words": [
+    "castfit",
+    "codeql",
+    "docopt",
+    "metaist",
+    "mypy",
+    "pathlib",
+    "pdoc3",
+    "pydantic",
+    "pypa",
+    "pypi",
+    "pyproject",
+    "pyright",
+    "pytest",
+    "setattrs",
+    "setuptools",
+    "typechecks",
+    "venv"
+  ]
+}
