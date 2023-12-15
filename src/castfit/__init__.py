@@ -86,7 +86,7 @@ __all__ = [
 ]
 
 __version__ = "0.1.0"
-__pubdate__ = "2023-12-15T00:43:07Z"
+__pubdate__ = "2023-12-15T12:12:04Z"
 
 K = TypeVar("K")
 """Type variable for keys."""
