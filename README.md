@@ -6,14 +6,8 @@
 </p>
 <p align="center">
   <a href="https://github.com/metaist/castfit/actions/workflows/ci.yaml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/metaist/castfit/.github/workflows/ci.yaml?branch=main&logo=github"/></a>
-  <!-- <a href="https://github.com/metaist/castfit/issues"><img alt="Issues" src="https://img.shields.io/github/issues/metaist/castfit?logo=github"/></a> -->
-  <!-- <br /> -->
   <a href="https://pypi.org/project/castfit"><img alt="PyPI" src="https://img.shields.io/pypi/v/castfit.svg?color=blue" /></a>
   <a href="https://pypi.org/project/castfit"><img alt="Supported Python Versions" src="https://img.shields.io/pypi/pyversions/castfit" /></a>
-  <!-- <br />
-  <a href="https://metaist.github.io/castfit/"><img alt="Docs" src="https://img.shields.io/badge/docs-read-%2" /></a>
-  <a href="https://github.com/metaist/castfit/blob/main/CHANGELOG.md"><img alt="Changelog" src="https://img.shields.io/badge/changelog-read-%2"></a>
-  <a href="https://github.com/metaist/castfit/blob/main/LICENSE.md"><img alt="License" src="https://img.shields.io/github/license/metaist/castfit" /></a> -->
 </p>
 
 ## Why?
