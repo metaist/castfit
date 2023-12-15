@@ -30,7 +30,7 @@ import sys
 if sys.version_info >= (3, 11):  # pragma: no cover
     from types import NoneType
     from typing import Never
-else:
+else:  # pragma: no cover
     NoneType = type(None)
     Never = NoReturn
 
