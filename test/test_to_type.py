@@ -20,10 +20,17 @@ from castfit import Never
 from castfit import NoneType
 
 
-def test_get_class() -> None:
+def test_get_origin_type() -> None:
+    """Get the appropriate constructor."""
     assert castfit.get_origin_type(List[int]) == list
     assert castfit.get_origin_type(list) == list
     assert castfit.get_origin_type([]) == list
+
+    class MyList(List[int]):
+        pass
+
+    assert castfit.get_origin_type(MyList) == MyList
+    assert castfit.get_origin_type(MyList([1, 2, 3])) == MyList
 
 
 def test_any() -> None:
@@ -115,7 +122,9 @@ def test_datetime() -> None:
     )
 
 
-def test_spec_class() -> None:
+def test_castfit_class() -> None:
+    """Cast data using a class."""
+
     class Spec:
         name: str
         age: int
@@ -127,7 +136,9 @@ def test_spec_class() -> None:
     assert have.loc == Path("/")
 
 
-def test_spec_object() -> None:
+def test_castfit_object() -> None:
+    """Cast data using an instance."""
+
     class Spec:
         name: str
         age: int
@@ -140,6 +151,8 @@ def test_spec_object() -> None:
 
 
 def test_spec_dataclass() -> None:
+    """Cast data using a dataclass."""
+
     @dataclass
     class Spec:
         name: str
