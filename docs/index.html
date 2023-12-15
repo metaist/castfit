@@ -95,8 +95,59 @@ else:
     NoneType = type(None)
     Never = NoReturn
 
+__all__ = [
+    &#34;__version__&#34;,
+    &#34;__pubdate__&#34;,
+    #
+    # imported
+    &#34;Never&#34;,
+    &#34;NoneType&#34;,
+    #
+    # types
+    &#34;Ignored&#34;,
+    &#34;TypeForm&#34;,
+    &#34;CheckFn&#34;,
+    &#34;Checks&#34;,
+    &#34;CastFn&#34;,
+    &#34;Casts&#34;,
+    #
+    # top-level API
+    &#34;castfit&#34;,
+    &#34;is_type&#34;,
+    &#34;to_type&#34;,
+    #
+    # extensions
+    &#34;checks_type&#34;,
+    &#34;casts_to&#34;,
+    #
+    # lower-level API
+    &#34;get_origin_type&#34;,
+    &#34;setattrs&#34;,
+    &#34;is_any&#34;,
+    &#34;to_any&#34;,
+    &#34;is_never&#34;,
+    &#34;to_never&#34;,
+    &#34;is_none&#34;,
+    &#34;to_none&#34;,
+    &#34;is_literal&#34;,
+    &#34;to_literal&#34;,
+    &#34;is_union&#34;,
+    &#34;to_union&#34;,
+    &#34;to_bytes&#34;,
+    &#34;to_str&#34;,
+    &#34;is_list&#34;,
+    &#34;to_list&#34;,
+    &#34;is_set&#34;,
+    &#34;to_set&#34;,
+    &#34;is_dict&#34;,
+    &#34;to_dict&#34;,
+    &#34;is_tuple&#34;,
+    &#34;to_tuple&#34;,
+    &#34;to_datetime&#34;,
+]
 
 __version__ = &#34;0.1.0&#34;
+__pubdate__ = &#34;2023-12-15T00:43:07Z&#34;
 
 K = TypeVar(&#34;K&#34;)
 &#34;&#34;&#34;Type variable for keys.&#34;&#34;&#34;
@@ -112,12 +163,22 @@ TypeForm = Union[Type[T], Any]
 # NOTE: We want just `Type[T]`, but `mypy` treats special forms as `object`.
 
 CheckFn = Callable[[Any, TypeForm[Any]], bool]
+&#34;&#34;&#34;Function signature that checks if a value is of a type.&#34;&#34;&#34;
+
 Checks = Dict[TypeForm[Any], CheckFn]
+&#34;&#34;&#34;Type of internal mapping of types to check functions.&#34;&#34;&#34;
+
 TYPE_CHECKS: Checks = {}
+&#34;&#34;&#34;Mapping of types to check functions.&#34;&#34;&#34;
 
 CastFn = Callable[[Any, TypeForm[T]], T]
+&#34;&#34;&#34;Function signature that maps a value to a type.&#34;&#34;&#34;
+
 Casts = Dict[TypeForm[Any], CastFn[Any]]
+&#34;&#34;&#34;Type of internal mapping of types to cast functions.&#34;&#34;&#34;
+
 TYPE_CASTS: Casts = {}
+&#34;&#34;&#34;Mapping of types to cast functions.&#34;&#34;&#34;
 
 
 @overload
@@ -402,14 +463,6 @@ def to_datetime(value: Any, kind: Type[datetime] = datetime) -&gt; datetime:
 <section>
 <h2 class="section-title" id="header-variables">Global variables</h2>
 <dl>
-<dt id="castfit.K"><code class="name">var <span class="ident">K</span></code></dt>
-<dd>
-<div class="desc"><p>Type variable for keys.</p></div>
-</dd>
-<dt id="castfit.T"><code class="name">var <span class="ident">T</span></code></dt>
-<dd>
-<div class="desc"><p>Type variable for values.</p></div>
-</dd>
 <dt id="castfit.Ignored"><code class="name">var <span class="ident">Ignored</span></code></dt>
 <dd>
 <div class="desc"><p>A function argument that is ignored.</p></div>
@@ -417,6 +470,22 @@ def to_datetime(value: Any, kind: Type[datetime] = datetime) -&gt; datetime:
 <dt id="castfit.TypeForm"><code class="name">var <span class="ident">TypeForm</span></code></dt>
 <dd>
 <div class="desc"><p><code>Type</code> and special forms like <code>All</code>, <code>Union</code>, etc.</p></div>
+</dd>
+<dt id="castfit.CheckFn"><code class="name">var <span class="ident">CheckFn</span></code></dt>
+<dd>
+<div class="desc"><p>Function signature that checks if a value is of a type.</p></div>
+</dd>
+<dt id="castfit.Checks"><code class="name">var <span class="ident">Checks</span></code></dt>
+<dd>
+<div class="desc"><p>Type of internal mapping of types to check functions.</p></div>
+</dd>
+<dt id="castfit.CastFn"><code class="name">var <span class="ident">CastFn</span></code></dt>
+<dd>
+<div class="desc"><p>Function signature that maps a value to a type.</p></div>
+</dd>
+<dt id="castfit.Casts"><code class="name">var <span class="ident">Casts</span></code></dt>
+<dd>
+<div class="desc"><p>Type of internal mapping of types to cast functions.</p></div>
 </dd>
 </dl>
 </section>
@@ -448,7 +517,7 @@ def to_datetime(value: Any, kind: Type[datetime] = datetime) -&gt; datetime:
 </details>
 </dd>
 <dt id="castfit.is_type"><code class="name flex">
-<span>def <span class="ident">is_type</span></span>(<span>value: Any, kind: <a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a>[Any], checks: Optional[Checks] = None) ‑> bool</span>
+<span>def <span class="ident">is_type</span></span>(<span>value: Any, kind: <a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a>[Any], checks: Optional[<a title="castfit.Checks" href="#castfit.Checks">Checks</a>] = None) ‑> bool</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Return <code>True</code> if <code>value</code> is of a type compatible with <code>kind</code>.</p></div>
@@ -468,7 +537,7 @@ def to_datetime(value: Any, kind: Type[datetime] = datetime) -&gt; datetime:
 </details>
 </dd>
 <dt id="castfit.to_type"><code class="name flex">
-<span>def <span class="ident">to_type</span></span>(<span>value: Any, kind: <a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a>[<a title="castfit.T" href="#castfit.T">T</a>], checks: Optional[Checks] = None, casts: Optional[Casts] = None) ‑> ~<a title="castfit.T" href="#castfit.T">T</a></span>
+<span>def <span class="ident">to_type</span></span>(<span>value: Any, kind: <a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a>[T], checks: Optional[<a title="castfit.Checks" href="#castfit.Checks">Checks</a>] = None, casts: Optional[<a title="castfit.Casts" href="#castfit.Casts">Casts</a>] = None) ‑> ~T</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Try to cast <code>value</code> to the type of <code>kind</code>.</p></div>
@@ -499,8 +568,48 @@ def to_datetime(value: Any, kind: Type[datetime] = datetime) -&gt; datetime:
         raise TypeError(f&#34;Cannot cast {value!r} to {kind}&#34;)</code></pre>
 </details>
 </dd>
+<dt id="castfit.checks_type"><code class="name flex">
+<span>def <span class="ident">checks_type</span></span>(<span>*types: Any) ‑> Callable[[Callable[[Any, Union[Type[Any], Any]], bool]], Callable[[Any, Union[Type[Any], Any]], bool]]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Define a type-checker for one or more types.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def checks_type(*types: Any) -&gt; Callable[[CheckFn], CheckFn]:
+    &#34;&#34;&#34;Define a type-checker for one or more types.&#34;&#34;&#34;
+
+    def _factory(func: CheckFn) -&gt; CheckFn:
+        for t in types:
+            TYPE_CHECKS[t] = func
+        return func
+
+    return _factory</code></pre>
+</details>
+</dd>
+<dt id="castfit.casts_to"><code class="name flex">
+<span>def <span class="ident">casts_to</span></span>(<span>*types: Any) ‑> Callable[[~T], ~T]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Define a type-caster for one or more types.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def casts_to(*types: Any) -&gt; Callable[[T], T]:
+    &#34;&#34;&#34;Define a type-caster for one or more types.&#34;&#34;&#34;
+
+    def _factory(func: T) -&gt; T:
+        for t in types:
+            TYPE_CASTS[t] = cast(CastFn[Any], func)
+        return func
+
+    return _factory</code></pre>
+</details>
+</dd>
 <dt id="castfit.get_origin_type"><code class="name flex">
-<span>def <span class="ident">get_origin_type</span></span>(<span>given: <a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a>[<a title="castfit.T" href="#castfit.T">T</a>]) ‑> Type[~<a title="castfit.T" href="#castfit.T">T</a>]</span>
+<span>def <span class="ident">get_origin_type</span></span>(<span>given: <a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a>[T]) ‑> Type[~T]</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Returns the <code>given</code> type, its origin, or <code>type(obj)</code>.</p>
@@ -536,46 +645,6 @@ def to_datetime(value: Any, kind: Type[datetime] = datetime) -&gt; datetime:
     return obj</code></pre>
 </details>
 </dd>
-<dt id="castfit.checks_type"><code class="name flex">
-<span>def <span class="ident">checks_type</span></span>(<span>*types: Any) ‑> Callable[[Callable[[Any, Union[Type[Any], Any]], bool]], Callable[[Any, Union[Type[Any], Any]], bool]]</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Define a type-checker for one or more types.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def checks_type(*types: Any) -&gt; Callable[[CheckFn], CheckFn]:
-    &#34;&#34;&#34;Define a type-checker for one or more types.&#34;&#34;&#34;
-
-    def _factory(func: CheckFn) -&gt; CheckFn:
-        for t in types:
-            TYPE_CHECKS[t] = func
-        return func
-
-    return _factory</code></pre>
-</details>
-</dd>
-<dt id="castfit.casts_to"><code class="name flex">
-<span>def <span class="ident">casts_to</span></span>(<span>*types: Any) ‑> Callable[[~<a title="castfit.T" href="#castfit.T">T</a>], ~<a title="castfit.T" href="#castfit.T">T</a>]</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Define a type-caster for one or more types.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def casts_to(*types: Any) -&gt; Callable[[T], T]:
-    &#34;&#34;&#34;Define a type-caster for one or more types.&#34;&#34;&#34;
-
-    def _factory(func: T) -&gt; T:
-        for t in types:
-            TYPE_CASTS[t] = cast(CastFn[Any], func)
-        return func
-
-    return _factory</code></pre>
-</details>
-</dd>
 <dt id="castfit.is_any"><code class="name flex">
 <span>def <span class="ident">is_any</span></span>(<span>) ‑> bool</span>
 </code></dt>
@@ -592,7 +661,7 @@ def is_any(_value: Ignored = None, _kind: Ignored = Any) -&gt; bool:
 </details>
 </dd>
 <dt id="castfit.to_any"><code class="name flex">
-<span>def <span class="ident">to_any</span></span>(<span>value: <a title="castfit.T" href="#castfit.T">T</a>) ‑> ~<a title="castfit.T" href="#castfit.T">T</a></span>
+<span>def <span class="ident">to_any</span></span>(<span>value: T) ‑> ~T</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Always return <code>value</code>.</p></div>
@@ -667,7 +736,7 @@ def to_none(_value: Ignored = None, _kind: Ignored = None) -&gt; None:
 </details>
 </dd>
 <dt id="castfit.is_literal"><code class="name flex">
-<span>def <span class="ident">is_literal</span></span>(<span>value: Any, kind: <a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a>[<a title="castfit.T" href="#castfit.T">T</a>]) ‑> bool</span>
+<span>def <span class="ident">is_literal</span></span>(<span>value: Any, kind: <a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a>[T]) ‑> bool</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Return <code>True</code> if <code>value</code> is a valid <code>Literal</code>.</p></div>
@@ -682,7 +751,7 @@ def is_literal(value: Any, kind: TypeForm[T]) -&gt; bool:
 </details>
 </dd>
 <dt id="castfit.to_literal"><code class="name flex">
-<span>def <span class="ident">to_literal</span></span>(<span>value: <a title="castfit.T" href="#castfit.T">T</a>, kind: <a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a>[<a title="castfit.T" href="#castfit.T">T</a>]) ‑> ~<a title="castfit.T" href="#castfit.T">T</a></span>
+<span>def <span class="ident">to_literal</span></span>(<span>value: T, kind: <a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a>[T]) ‑> ~T</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Return <code>value</code> if it is one of the <code>Literal</code> values.</p></div>
@@ -699,7 +768,7 @@ def to_literal(value: T, kind: TypeForm[T]) -&gt; T:
 </details>
 </dd>
 <dt id="castfit.is_union"><code class="name flex">
-<span>def <span class="ident">is_union</span></span>(<span>value: Any, kind: <a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a>[<a title="castfit.T" href="#castfit.T">T</a>]) ‑> bool</span>
+<span>def <span class="ident">is_union</span></span>(<span>value: Any, kind: <a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a>[T]) ‑> bool</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Return <code>True</code> if <code>value</code> is a valid <code>Union</code>.</p></div>
@@ -714,7 +783,7 @@ def is_union(value: Any, kind: TypeForm[T]) -&gt; bool:
 </details>
 </dd>
 <dt id="castfit.to_union"><code class="name flex">
-<span>def <span class="ident">to_union</span></span>(<span>value: Any, kind: <a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a>[<a title="castfit.T" href="#castfit.T">T</a>]) ‑> ~<a title="castfit.T" href="#castfit.T">T</a></span>
+<span>def <span class="ident">to_union</span></span>(<span>value: Any, kind: <a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a>[T]) ‑> ~T</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -769,7 +838,7 @@ def to_str(value: Any, kind: Type[str] = str) -&gt; str:
 </details>
 </dd>
 <dt id="castfit.is_list"><code class="name flex">
-<span>def <span class="ident">is_list</span></span>(<span>value: Any, kind: <a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a>[<a title="castfit.T" href="#castfit.T">T</a>]) ‑> bool</span>
+<span>def <span class="ident">is_list</span></span>(<span>value: Any, kind: <a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a>[T]) ‑> bool</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Return <code>True</code> if <code>value</code> is a valid <code>list</code>.</p></div>
@@ -789,7 +858,7 @@ def is_list(value: Any, kind: TypeForm[T]) -&gt; bool:
 </details>
 </dd>
 <dt id="castfit.to_list"><code class="name flex">
-<span>def <span class="ident">to_list</span></span>(<span>value: Any, kind: <a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a>[List[<a title="castfit.T" href="#castfit.T">T</a>]] = builtins.list) ‑> List[~<a title="castfit.T" href="#castfit.T">T</a>]</span>
+<span>def <span class="ident">to_list</span></span>(<span>value: Any, kind: <a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a>[List[T]] = builtins.list) ‑> List[~T]</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Cast <code>value</code> into <code>list</code>.</p></div>
@@ -806,7 +875,7 @@ def to_list(value: Any, kind: TypeForm[List[T]] = list) -&gt; List[T]:
 </details>
 </dd>
 <dt id="castfit.is_set"><code class="name flex">
-<span>def <span class="ident">is_set</span></span>(<span>value: Any, kind: <a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a>[<a title="castfit.T" href="#castfit.T">T</a>]) ‑> bool</span>
+<span>def <span class="ident">is_set</span></span>(<span>value: Any, kind: <a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a>[T]) ‑> bool</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Return <code>True</code> if <code>value</code> is a valid <code>set</code>.</p></div>
@@ -826,7 +895,7 @@ def is_set(value: Any, kind: TypeForm[T]) -&gt; bool:
 </details>
 </dd>
 <dt id="castfit.to_set"><code class="name flex">
-<span>def <span class="ident">to_set</span></span>(<span>value: Any, kind: <a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a>[Set[<a title="castfit.T" href="#castfit.T">T</a>]] = builtins.set) ‑> Set[~<a title="castfit.T" href="#castfit.T">T</a>]</span>
+<span>def <span class="ident">to_set</span></span>(<span>value: Any, kind: <a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a>[Set[T]] = builtins.set) ‑> Set[~T]</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Cast <code>value</code> into <code>set</code>.</p></div>
@@ -843,7 +912,7 @@ def to_set(value: Any, kind: TypeForm[Set[T]] = set) -&gt; Set[T]:
 </details>
 </dd>
 <dt id="castfit.is_dict"><code class="name flex">
-<span>def <span class="ident">is_dict</span></span>(<span>value: Any, kind: <a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a>[<a title="castfit.T" href="#castfit.T">T</a>]) ‑> bool</span>
+<span>def <span class="ident">is_dict</span></span>(<span>value: Any, kind: <a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a>[T]) ‑> bool</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Return <code>True</code> if <code>value</code> is a valid <code>dict</code>.</p></div>
@@ -863,7 +932,7 @@ def is_dict(value: Any, kind: TypeForm[T]) -&gt; bool:
 </details>
 </dd>
 <dt id="castfit.to_dict"><code class="name flex">
-<span>def <span class="ident">to_dict</span></span>(<span>value: Any, kind: <a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a>[Dict[<a title="castfit.K" href="#castfit.K">K</a>, <a title="castfit.T" href="#castfit.T">T</a>]] = builtins.dict) ‑> Dict[~<a title="castfit.K" href="#castfit.K">K</a>, ~<a title="castfit.T" href="#castfit.T">T</a>]</span>
+<span>def <span class="ident">to_dict</span></span>(<span>value: Any, kind: <a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a>[Dict[K, T]] = builtins.dict) ‑> Dict[~K, ~T]</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Cast <code>value</code> into a <code>dict</code>.</p></div>
@@ -882,7 +951,7 @@ def to_dict(value: Any, kind: TypeForm[Dict[K, T]] = dict) -&gt; Dict[K, T]:
 </details>
 </dd>
 <dt id="castfit.is_tuple"><code class="name flex">
-<span>def <span class="ident">is_tuple</span></span>(<span>value: Any, kind: <a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a>[<a title="castfit.T" href="#castfit.T">T</a>]) ‑> bool</span>
+<span>def <span class="ident">is_tuple</span></span>(<span>value: Any, kind: <a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a>[T]) ‑> bool</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Return <code>True</code> if <code>value</code> is a valid <code>tuple</code>.</p></div>
@@ -946,6 +1015,16 @@ def to_datetime(value: Any, kind: Type[datetime] = datetime) -&gt; datetime:
 </dl>
 </section>
 <section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="castfit.NoneType"><code class="flex name class">
+<span>class <span class="ident">NoneType</span></span>
+<span>(</span><span>...)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+</dl>
 </section>
 </article>
 <nav id="sidebar">
@@ -960,11 +1039,13 @@ def to_datetime(value: Any, kind: Type[datetime] = datetime) -&gt; datetime:
 </div>
 <ul id="index">
 <li><h3><a href="#header-variables">Global variables</a></h3>
-<ul class="">
-<li><code><a title="castfit.K" href="#castfit.K">K</a></code></li>
-<li><code><a title="castfit.T" href="#castfit.T">T</a></code></li>
+<ul class="two-column">
 <li><code><a title="castfit.Ignored" href="#castfit.Ignored">Ignored</a></code></li>
 <li><code><a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a></code></li>
+<li><code><a title="castfit.CheckFn" href="#castfit.CheckFn">CheckFn</a></code></li>
+<li><code><a title="castfit.Checks" href="#castfit.Checks">Checks</a></code></li>
+<li><code><a title="castfit.CastFn" href="#castfit.CastFn">CastFn</a></code></li>
+<li><code><a title="castfit.Casts" href="#castfit.Casts">Casts</a></code></li>
 </ul>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
@@ -972,10 +1053,10 @@ def to_datetime(value: Any, kind: Type[datetime] = datetime) -&gt; datetime:
 <li><code><a title="castfit.castfit" href="#castfit.castfit">castfit</a></code></li>
 <li><code><a title="castfit.is_type" href="#castfit.is_type">is_type</a></code></li>
 <li><code><a title="castfit.to_type" href="#castfit.to_type">to_type</a></code></li>
-<li><code><a title="castfit.get_origin_type" href="#castfit.get_origin_type">get_origin_type</a></code></li>
-<li><code><a title="castfit.setattrs" href="#castfit.setattrs">setattrs</a></code></li>
 <li><code><a title="castfit.checks_type" href="#castfit.checks_type">checks_type</a></code></li>
 <li><code><a title="castfit.casts_to" href="#castfit.casts_to">casts_to</a></code></li>
+<li><code><a title="castfit.get_origin_type" href="#castfit.get_origin_type">get_origin_type</a></code></li>
+<li><code><a title="castfit.setattrs" href="#castfit.setattrs">setattrs</a></code></li>
 <li><code><a title="castfit.is_any" href="#castfit.is_any">is_any</a></code></li>
 <li><code><a title="castfit.to_any" href="#castfit.to_any">to_any</a></code></li>
 <li><code><a title="castfit.is_never" href="#castfit.is_never">is_never</a></code></li>
@@ -997,6 +1078,13 @@ def to_datetime(value: Any, kind: Type[datetime] = datetime) -&gt; datetime:
 <li><code><a title="castfit.is_tuple" href="#castfit.is_tuple">is_tuple</a></code></li>
 <li><code><a title="castfit.to_tuple" href="#castfit.to_tuple">to_tuple</a></code></li>
 <li><code><a title="castfit.to_datetime" href="#castfit.to_datetime">to_datetime</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="castfit.NoneType" href="#castfit.NoneType">NoneType</a></code></h4>
+</li>
 </ul>
 </li>
 </ul>

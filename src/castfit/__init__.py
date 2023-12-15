@@ -30,10 +30,60 @@ import sys
 if sys.version_info >= (3, 11):  # pragma: no cover
     from types import NoneType
     from typing import Never
-else:
+else:  # pragma: no cover
     NoneType = type(None)
     Never = NoReturn
 
+__all__ = [
+    "__version__",
+    "__pubdate__",
+    #
+    # imported
+    "Never",
+    "NoneType",
+    #
+    # types
+    "Ignored",
+    "TypeForm",
+    "CheckFn",
+    "Checks",
+    "CastFn",
+    "Casts",
+    #
+    # top-level API
+    "castfit",
+    "is_type",
+    "to_type",
+    #
+    # extensions
+    "checks_type",
+    "casts_to",
+    #
+    # lower-level API
+    "get_origin_type",
+    "setattrs",
+    "is_any",
+    "to_any",
+    "is_never",
+    "to_never",
+    "is_none",
+    "to_none",
+    "is_literal",
+    "to_literal",
+    "is_union",
+    "to_union",
+    "to_bytes",
+    "to_str",
+    "is_list",
+    "to_list",
+    "is_set",
+    "to_set",
+    "is_dict",
+    "to_dict",
+    "is_tuple",
+    "to_tuple",
+    "to_datetime",
+]
 
 __version__ = "0.1.0"
 __pubdate__ = "2023-12-15T00:43:07Z"
@@ -52,12 +102,22 @@ TypeForm = Union[Type[T], Any]
 # NOTE: We want just `Type[T]`, but `mypy` treats special forms as `object`.
 
 CheckFn = Callable[[Any, TypeForm[Any]], bool]
+"""Function signature that checks if a value is of a type."""
+
 Checks = Dict[TypeForm[Any], CheckFn]
+"""Type of internal mapping of types to check functions."""
+
 TYPE_CHECKS: Checks = {}
+"""Mapping of types to check functions."""
 
 CastFn = Callable[[Any, TypeForm[T]], T]
+"""Function signature that maps a value to a type."""
+
 Casts = Dict[TypeForm[Any], CastFn[Any]]
+"""Type of internal mapping of types to cast functions."""
+
 TYPE_CASTS: Casts = {}
+"""Mapping of types to cast functions."""
 
 
 @overload
