@@ -91,7 +91,7 @@ import sys
 if sys.version_info &gt;= (3, 11):  # pragma: no cover
     from types import NoneType
     from typing import Never
-else:
+else:  # pragma: no cover
     NoneType = type(None)
     Never = NoReturn
 
@@ -147,7 +147,7 @@ __all__ = [
 ]
 
 __version__ = &#34;0.1.0&#34;
-__pubdate__ = &#34;2023-12-15T00:43:07Z&#34;
+__pubdate__ = &#34;2023-12-15T12:12:04Z&#34;
 
 K = TypeVar(&#34;K&#34;)
 &#34;&#34;&#34;Type variable for keys.&#34;&#34;&#34;
