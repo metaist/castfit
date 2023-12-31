@@ -8,12 +8,13 @@ git clone git@github.com:metaist/castfit.git
 cd castfit
 
 # create a virtual environment
-python -m venv .venv
+python -m venv .venv --prompt castfit
 . .venv/bin/activate
 pip install --upgrade pip
 
 # install dependencies and dev tools
 pip install -e ".[dev]"
+pnpm install -g cspell
 ```
 
 As you work on the code, you should periodically run:
@@ -34,7 +35,7 @@ git checkout prod
 git merge --no-ff --no-edit main
 ```
 
-Update top-most `__init__.py` or `castfit.py`:
+Update top-most `__init__.py`:
 
 ```python
 __version__ = "X.0.1"
