@@ -93,6 +93,7 @@ docs = { shell = """\
     --config show_inherited_members=True \
     --force src/$(basename $(pwd));
   mv docs/**/* docs/
+  touch docs/.nojekyll
 """ }
 
 lint = { composite = ["black", "ruff", "cspell", "pyright", "mypy"] }

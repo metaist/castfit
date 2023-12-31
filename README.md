@@ -1,8 +1,9 @@
-## castfit: basic type casting
+# castfit: basic type casting
 
 <p align="center">
-  <a href="https://metaist.github.io/castfit/"><img alt="castfit" width="200" src="https://raw.githubusercontent.com/metaist/castfit/main/cats-fit.png" /></a><br />
-  <em>Do you even castfit?<br />If it fits, I sits.</em>
+  <a href="https://metaist.github.io/castfit/"><img alt="Cuddles the Cat" width="200" src="https://raw.githubusercontent.com/metaist/castfit/main/cats-fit.png" /></a><br />
+  <em>Cuddles the Cat<br />
+  "If it fits, I sits."</em>
 </p>
 <p align="center">
   <a href="https://github.com/metaist/castfit/actions/workflows/ci.yaml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/metaist/castfit/.github/workflows/ci.yaml?branch=main&logo=github"/></a>
@@ -23,6 +24,8 @@ I'm writing more and more type-checked code, but I often get a bunch of strings 
 ```bash
 python -m pip install castfit
 ```
+
+Alternatively, you can just [download the single file](https://raw.githubusercontent.com/metaist/castfit/main/src/castfit/__init__.py) and name it `castfit.py`.
 
 ## Example
 
