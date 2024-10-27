@@ -10,14 +10,14 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -32,26 +32,18 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           pip install -e ".[dev]"
 
-      - name: Format (black)
+      - name: Format & Lint (ruff, cspell)
         run: |
-          pdm run black
+          ds lint
 
-      - name: Lint (ruff)
+      - name: Type check (pyright, mypy)
         run: |
-          pdm run ruff
+          ds types
 
-      - name: Type check (mypy)
+      - name: Run tests (pytest, coverage)
         run: |
-          pdm run mypy
+          ds test
 
-      # - name: Type check (pyright)
-      #   run: |
-      #     pdm run pyright
-
-      - name: Run tests
+      - name: Build docs (pdoc)
         run: |
-          pdm run test
-
-      - name: Build docs
-        run: |
-          pdm run docs
+          ds docs
