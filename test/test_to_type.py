@@ -12,7 +12,7 @@ from typing import Tuple
 from typing import Union
 
 # lib
-from pytest import raises  # type: ignore[reportMissingImports, unused-ignore]
+from pytest import raises
 
 # pkg
 import castfit

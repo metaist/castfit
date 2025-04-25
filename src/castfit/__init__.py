@@ -96,7 +96,7 @@ Ignored = Optional[Any]
 
 TypeForm = Union[Type[T], Any]
 """`Type` and special forms like `All`, `Union`, etc."""
-# NOTE: We want just `Type[T]`, but `mypy` treats special forms as `object`.
+# NOTE: We want something like `Union[Type[T], _SpecialForm]`, but it doesn't work.
 
 CheckFn = Callable[[Any, TypeForm[Any]], bool]
 """Function signature that checks if a value is of a type."""
@@ -125,19 +125,19 @@ def castfit(spec: Type[T], data: dict[str, Any]) -> T: ...
 def castfit(spec: T, data: dict[str, Any]) -> T: ...
 
 
-def castfit(spec, data):  # type: ignore[no-untyped-def]
+def castfit(spec: Type[T] | T, data: dict[str, Any]) -> T:
     """Construct a `spec` using `data` that has been cast appropriately."""
     type_hints = get_type_hints(spec)
     typed_data: dict[str, Any] = {
         name: to_type(value, type_hints.get(name, Any)) for name, value in data.items()
     }
     if is_dataclass(spec) and isinstance(spec, type):
-        return spec(**typed_data)
+        return cast(T, spec(**typed_data))
 
     result = spec
     if isinstance(spec, type):
         result = spec()
-    return setattrs(result, **typed_data)
+    return setattrs(cast(T, result), **typed_data)
 
 
 # TODO 2025-10-31 @ py3.9 EOL: make return type `TypeGuard[T]`
@@ -185,7 +185,7 @@ def get_origin_type(given: TypeForm[T]) -> Type[T]:
     return cast(Type[T], type(given))  # cast due to mypy
 
 
-def setattrs(obj: object, **values: dict[str, Any]) -> object:
+def setattrs(obj: T, **values: dict[str, Any]) -> T:
     """Like `setattr()` but for multiple values and returns the object."""
     for name, val in values.items():
         setattr(obj, name, val)
