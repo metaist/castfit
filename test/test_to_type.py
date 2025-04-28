@@ -3,30 +3,26 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-from typing import Dict
-from typing import List
 from typing import Literal
 from typing import Optional
-from typing import Set
-from typing import Tuple
 from typing import Union
 
 # lib
 from pytest import raises
 
 # pkg
-import castfit
 from castfit import Never
 from castfit import NoneType
+import castfit
 
 
 def test_get_origin_type() -> None:
     """Get the appropriate constructor."""
-    assert castfit.get_origin_type(List[int]) is list
+    assert castfit.get_origin_type(list[int]) is list
     assert castfit.get_origin_type(list) is list
     assert castfit.get_origin_type([]) is list
 
-    class MyList(List[int]):
+    class MyList(list[int]):
         pass
 
     assert castfit.get_origin_type(MyList) == MyList
@@ -35,7 +31,7 @@ def test_get_origin_type() -> None:
 
 def test_any() -> None:
     """Keep whatever type you have."""
-    values: List[Any] = [None, True, 3, 6.28, "test", b"test"]
+    values: list[Any] = [None, True, 3, 6.28, "test", b"test"]
     for val in values:
         assert castfit.to_type(val, Any) == val
         assert castfit.to_any(val) == val  # since `to_type` doesn't try the cast
@@ -94,25 +90,27 @@ def test_union() -> None:
 
 def test_empty() -> None:
     """Make empty containers."""
-    assert castfit.to_type(list(), Dict[str, int]) == dict()
-    assert castfit.to_type(set(), List[int]) == list()
-    assert castfit.to_type(list(), Set[int]) == set()
-    assert castfit.to_type("", Tuple[()]) == tuple()
+    assert castfit.to_type(list(), dict[str, int]) == dict()
+    assert castfit.to_type(set(), list[int]) == list()
+    assert castfit.to_type(list(), set[int]) == set()
+    assert castfit.to_type("", tuple[()]) == tuple()
 
     with raises(ValueError):
-        castfit.to_type([1, 2], Tuple[int, str, float])  # not enough values
+        castfit.to_type([1, 2], tuple[int, str, float])  # not enough values
 
 
 def test_containers() -> None:
     """Cast values in a container."""
-    assert castfit.to_type([1, "2", 3.0], List[float]) == [1.0, 2.0, 3.0]
-    assert castfit.to_type([1, "2", 3.0], Set[float]) == {1.0, 2.0, 3.0}
-    assert castfit.to_type([1, "2", 3.0], Tuple[float, int, str]) == (1.0, 2, "3.0")
-    assert castfit.to_type([1, "2", 3.0], Tuple[float, ...]) == (1.0, 2.0, 3.0)
-    assert castfit.to_type({"x": 1, 2: "3"}, Dict[str, float]) == {
+    assert castfit.to_type([1, "2", 3.0], list[float]) == [1.0, 2.0, 3.0]
+    assert castfit.to_type([1, "2", 3.0], set[float]) == {1.0, 2.0, 3.0}
+    assert castfit.to_type([1, "2", 3.0], tuple[float, int, str]) == (1.0, 2, "3.0")
+    assert castfit.to_type([1, "2", 3.0], tuple[float, ...]) == (1.0, 2.0, 3.0)
+    assert castfit.to_type({"x": 1, 2: "3"}, dict[str, float]) == {
         "x": 1.0,
         "2": 3.0,
     }
+    assert castfit.to_type({"x": 1, 2: "3"}, list) == ["x", 2]
+    assert castfit.to_type({"x": 1, 2: "3"}, set) == {"x", 2}
 
 
 def test_datetime() -> None:

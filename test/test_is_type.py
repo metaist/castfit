@@ -76,7 +76,9 @@ def test_empty() -> None:
 
 def test_list() -> None:
     """Every item in the list or set must match."""
+    assert castfit.is_type([1], list)
     assert castfit.is_type([1], list[int])
+    assert castfit.is_type({6, 7}, set)
     assert castfit.is_type({6, 7}, set[int])
 
     assert castfit.is_type([3, 5, "test", "fun"], list[Union[int, str]])
@@ -97,6 +99,7 @@ def test_tuple() -> None:
 
 def test_dict() -> None:
     """Keys and values must match."""
+    assert castfit.is_type({"field": 2.0}, dict)
     assert castfit.is_type({"field": 2.0}, dict[str, float])
     assert castfit.is_type({"x": 1, "y": "test"}, dict[str, Union[int, str]])
 
