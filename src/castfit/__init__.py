@@ -82,8 +82,8 @@ __all__ = [
     "to_datetime",
 ]
 
-__version__ = "0.1.0"
-__pubdate__ = "2023-12-15T12:12:04Z"
+__version__ = "0.1.1"
+__pubdate__ = "2025-04-28T14:32:37Z"
 
 K = TypeVar("K")
 """Type variable for keys."""

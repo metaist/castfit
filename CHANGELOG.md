@@ -19,6 +19,22 @@ These are changes that are on `main` that are not yet in `prod`.
 
 ---
 
+[#1]: https://github.com/metaist/castfit/issues/1
+[metaist/LTS#8]: https://github.com/metaist/LTS/issues/8
+[0.1.1]: https://github.com/metaist/castfit/compare/0.1.0...0.1.1
+
+## [0.1.1] - 2025-04-28T14:32:37Z
+
+**Fixed**
+
+- [#1]: type hints for `castfit`
+
+**Changed**
+
+- [metaist/LTS#8]: using latest github actions
+
+---
+
 [0.1.0]: https://github.com/metaist/castfit/commits/0.1.0
 
 ## [0.1.0] - 2023-12-15T12:12:04Z
