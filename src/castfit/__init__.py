@@ -117,6 +117,9 @@ Casts = dict[TypeForm[Any], CastFn[Any]]
 TYPE_CASTS: Casts = {}
 """Mapping of types to cast functions."""
 
+DEFAULT_ENCODING = "utf-8"
+"""Default file encoding."""
+
 
 @overload
 def castfit(
@@ -306,18 +309,18 @@ def to_union(value: Any, kind: TypeForm[T]) -> T:
 
 @casts_to(bytes)
 def to_bytes(value: Any, kind: Type[bytes] = bytes) -> bytes:
-    """Cast `value` into `bytes`, encoding `str` as UTF-8 bytes if needed."""
+    """Cast `value` into `bytes`, encoding `str` with a default encoding if needed."""
     if isinstance(value, str):
-        return value.encode("utf-8")
+        return value.encode(DEFAULT_ENCODING)
     cls: Type[bytes] = get_origin_type(kind)
     return cls(value)
 
 
 @casts_to(str)
 def to_str(value: Any, kind: Type[str] = str) -> str:
-    """Cast `value` into `str`, decoding `bytes` as UTF-8 strings if needed."""
+    """Cast `value` into `str`, decoding `bytes` with a default encoding if needed."""
     if isinstance(value, bytes):
-        return value.decode("utf-8")
+        return value.decode(DEFAULT_ENCODING)
     cls: Type[str] = get_origin_type(kind)
     return cls(value)
 
