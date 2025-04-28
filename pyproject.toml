@@ -72,11 +72,11 @@ exclude = ["**/_vendor/**"]
 lint = ["ruff-*", "+cspell"]
 ruff-format = "uvx ruff format ${@:-.}"
 ruff-lint = "uvx ruff check --fix ${@:-.}"
-cspell = "npx cspell lint --unique --gitignore --exclude '**/_vendor/**' '**/*.{py,txt,md,markdown}' "
+cspell = "npx --yes cspell lint --unique --gitignore --exclude '**/_vendor/**' '**/*.{py,txt,md,markdown}' "
 
 # Type Check
 types = ["pyright", "mypy"]
-pyright = "npx pyright src test"
+pyright = "npx --yes pyright src test"
 mypy = """
   mypy \
     --strict \
