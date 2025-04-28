@@ -112,6 +112,11 @@ def test_containers() -> None:
     assert castfit.to_type({"x": 1, 2: "3"}, list) == ["x", 2]
     assert castfit.to_type({"x": 1, 2: "3"}, set) == {"x", 2}
 
+    with raises(TypeError):  # input too short
+        castfit.to_type([1], tuple[float, int])
+    with raises(TypeError):  # input too long
+        castfit.to_type([1, 2], tuple[float])
+
 
 def test_datetime() -> None:
     """Cast `str` to `datetime`."""
