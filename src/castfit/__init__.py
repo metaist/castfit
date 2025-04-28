@@ -165,10 +165,10 @@ def to_type(
     casts = casts or TYPE_CASTS
     origin = get_origin(kind) or kind
     caster = casts.get(origin)
-    if caster:
-        return cast(T, caster(value, kind))
-
     try:
+        if caster:
+            return cast(T, caster(value, kind))
+
         if isinstance(value, dict):
             return castfit(kind, value)
         else:
@@ -384,12 +384,12 @@ def to_tuple(value: Any, kind: TypeForm[tuple[Any, ...]] = tuple) -> tuple[Any, 
     """Cast `value` into a `tuple`."""
     cls: Type[tuple[Any, ...]] = get_origin_type(kind)
     args = get_args(kind)
-    if len(value) == 0 and len(args) == 0 or args == ((),):
+    if (not value or len(value) == 0) and len(args) == 0 or args == ((),):
         return cls()
-    if len(args) > 1 and args[1] == ...:
+    if len(args) > 1 and args[1] == ...:  # by definition
         args = args[:1] * len(value)
-    if len(value) < len(args):
-        raise ValueError(f"Not enough values in {value!r} to cast to {kind}")
+    if len(value) != len(args):
+        raise ValueError(f"Different lengths when casting {value!r} to {kind}")
     return cls(to_type(val, val_type) for val, val_type in zip(value, args))
 
 

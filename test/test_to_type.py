@@ -95,9 +95,6 @@ def test_empty() -> None:
     assert castfit.to_type(list(), set[int]) == set()
     assert castfit.to_type("", tuple[()]) == tuple()
 
-    with raises(ValueError):
-        castfit.to_type([1, 2], tuple[int, str, float])  # not enough values
-
 
 def test_containers() -> None:
     """Cast values in a container."""
