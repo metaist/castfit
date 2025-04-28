@@ -1,7 +1,7 @@
-"""Basic type casting.
+"""castfit: basic type casting
 
 .. include:: ../../README.md
-   :start-line: 4
+   :start-line: 2
 """
 
 # std
@@ -11,22 +11,19 @@ from datetime import datetime
 from typing import Any
 from typing import Callable
 from typing import cast
-from typing import Dict
 from typing import get_args
 from typing import get_origin
 from typing import get_type_hints
-from typing import List
 from typing import Literal
 from typing import NoReturn
 from typing import Optional
 from typing import overload
-from typing import Set
-from typing import Tuple
 from typing import Type
 from typing import TypeVar
 from typing import Union
 import sys
 
+# TODO 2026-10-31 @ py3.10 EOL: remove conditional
 if sys.version_info >= (3, 11):  # pragma: no cover
     from types import NoneType
     from typing import Never
@@ -99,12 +96,12 @@ Ignored = Optional[Any]
 
 TypeForm = Union[Type[T], Any]
 """`Type` and special forms like `All`, `Union`, etc."""
-# NOTE: We want just `Type[T]`, but `mypy` treats special forms as `object`.
+# NOTE: We want something like `Union[Type[T], _SpecialForm]`, but it doesn't work.
 
 CheckFn = Callable[[Any, TypeForm[Any]], bool]
 """Function signature that checks if a value is of a type."""
 
-Checks = Dict[TypeForm[Any], CheckFn]
+Checks = dict[TypeForm[Any], CheckFn]
 """Type of internal mapping of types to check functions."""
 
 TYPE_CHECKS: Checks = {}
@@ -113,7 +110,7 @@ TYPE_CHECKS: Checks = {}
 CastFn = Callable[[Any, TypeForm[T]], T]
 """Function signature that maps a value to a type."""
 
-Casts = Dict[TypeForm[Any], CastFn[Any]]
+Casts = dict[TypeForm[Any], CastFn[Any]]
 """Type of internal mapping of types to cast functions."""
 
 TYPE_CASTS: Casts = {}
@@ -121,33 +118,31 @@ TYPE_CASTS: Casts = {}
 
 
 @overload
-def castfit(spec: Type[T], data: Dict[str, Any]) -> T:
-    ...
+def castfit(spec: Type[T], data: dict[str, Any]) -> T: ...
 
 
 @overload
-def castfit(spec: T, data: Dict[str, Any]) -> T:
-    ...
+def castfit(spec: T, data: dict[str, Any]) -> T: ...
 
 
-def castfit(spec, data):  # type: ignore[no-untyped-def]
+def castfit(spec: Type[T] | T, data: dict[str, Any]) -> T:
     """Construct a `spec` using `data` that has been cast appropriately."""
     type_hints = get_type_hints(spec)
-    typed_data: Dict[str, Any] = {
+    typed_data: dict[str, Any] = {
         name: to_type(value, type_hints.get(name, Any)) for name, value in data.items()
     }
     if is_dataclass(spec) and isinstance(spec, type):
-        return spec(**typed_data)
+        return cast(T, spec(**typed_data))
 
     result = spec
     if isinstance(spec, type):
         result = spec()
-    return setattrs(result, **typed_data)
+    return setattrs(cast(T, result), **typed_data)
 
 
+# TODO 2025-10-31 @ py3.9 EOL: make return type `TypeGuard[T]`
 def is_type(value: Any, kind: TypeForm[Any], checks: Optional[Checks] = None) -> bool:
     """Return `True` if `value` is of a type compatible with `kind`."""
-    # TODO [2024-10-14]: @ py3.8 EOL, make return type `TypeGuard[T]`
     checks = checks or TYPE_CHECKS
     origin = get_origin(kind) or kind
     checker = checks.get(origin)
@@ -190,7 +185,7 @@ def get_origin_type(given: TypeForm[T]) -> Type[T]:
     return cast(Type[T], type(given))  # cast due to mypy
 
 
-def setattrs(obj: object, **values: Dict[str, Any]) -> object:
+def setattrs(obj: T, **values: dict[str, Any]) -> T:
     """Like `setattr()` but for multiple values and returns the object."""
     for name, val in values.items():
         setattr(obj, name, val)
@@ -308,16 +303,16 @@ def is_list(value: Any, kind: TypeForm[T]) -> bool:
     """Return `True` if `value` is a valid `list`."""
     if not isinstance(value, list):
         return False
-    if len(value) == 0:  # list() matches List[Any]
+    if len(value) == 0:  # list() matches list[Any]
         return True
     vt = get_args(kind)[0]
     return all(is_type(v, vt) for v in value)
 
 
 @casts_to(list)
-def to_list(value: Any, kind: TypeForm[List[T]] = list) -> List[T]:
+def to_list(value: Any, kind: TypeForm[list[T]] = list) -> list[T]:
     """Cast `value` into `list`."""
-    cls: Type[List[T]] = get_origin_type(kind)
+    cls: Type[list[T]] = get_origin_type(kind)
     val_type = get_args(kind)[0]
     return cls(to_type(val, val_type) for val in value)
 
@@ -327,16 +322,16 @@ def is_set(value: Any, kind: TypeForm[T]) -> bool:
     """Return `True` if `value` is a valid `set`."""
     if not isinstance(value, set):
         return False
-    if len(value) == 0:  # set() matches Set[Any]
+    if len(value) == 0:  # set() matches set[Any]
         return True
     val_type = get_args(kind)[0]
     return all(is_type(val, val_type) for val in value)
 
 
 @casts_to(set)
-def to_set(value: Any, kind: TypeForm[Set[T]] = set) -> Set[T]:
+def to_set(value: Any, kind: TypeForm[set[T]] = set) -> set[T]:
     """Cast `value` into `set`."""
-    cls: Type[Set[T]] = get_origin_type(kind)
+    cls: Type[set[T]] = get_origin_type(kind)
     val_type = get_args(kind)[0]
     return cls(to_type(val, val_type) for val in value)
 
@@ -346,16 +341,16 @@ def is_dict(value: Any, kind: TypeForm[T]) -> bool:
     """Return `True` if `value` is a valid `dict`."""
     if not isinstance(value, dict):
         return False
-    if len(value) == 0:  # dict() matches Dict[Any, Any]
+    if len(value) == 0:  # dict() matches dict[Any, Any]
         return True
     kt, vt = get_args(kind)
     return all(is_type(k, kt) and is_type(v, vt) for k, v in value.items())
 
 
 @casts_to(dict)
-def to_dict(value: Any, kind: TypeForm[Dict[K, T]] = dict) -> Dict[K, T]:
+def to_dict(value: Any, kind: TypeForm[dict[K, T]] = dict) -> dict[K, T]:
     """Cast `value` into a `dict`."""
-    cls: Type[Dict[K, T]] = get_origin_type(kind)
+    cls: Type[dict[K, T]] = get_origin_type(kind)
     if len(value) == 0:
         return cls()
     kt, vt = get_args(kind)
@@ -376,9 +371,9 @@ def is_tuple(value: Any, kind: TypeForm[T]) -> bool:
 
 
 @casts_to(tuple)
-def to_tuple(value: Any, kind: TypeForm[Tuple[Any, ...]] = tuple) -> Tuple[Any, ...]:
+def to_tuple(value: Any, kind: TypeForm[tuple[Any, ...]] = tuple) -> tuple[Any, ...]:
     """Cast `value` into a `tuple`."""
-    cls: Type[Tuple[Any, ...]] = get_origin_type(kind)
+    cls: Type[tuple[Any, ...]] = get_origin_type(kind)
     args = get_args(kind)
     if len(value) == 0 and len(args) == 0 or args == ((),):
         return cls()

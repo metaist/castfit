@@ -1,17 +1,16 @@
-.env
-
 # general
 _ignore*
 _seed.py
+.env
 .venv*
 *.db
 
 # editors
+.DS_Store
 .idea
 .vim
 .vscode
 *.code-workspace
-.DS_Store
 
 # run
 __pycache__
@@ -24,7 +23,6 @@ __pycache__
 /htmlcov
 
 # build
-.pdm-python
 *.egg-info
 /build
 /dist

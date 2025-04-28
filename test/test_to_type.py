@@ -12,7 +12,7 @@ from typing import Tuple
 from typing import Union
 
 # lib
-from pytest import raises  # type: ignore[reportMissingImports, unused-ignore]
+from pytest import raises
 
 # pkg
 import castfit
@@ -22,9 +22,9 @@ from castfit import NoneType
 
 def test_get_origin_type() -> None:
     """Get the appropriate constructor."""
-    assert castfit.get_origin_type(List[int]) == list
-    assert castfit.get_origin_type(list) == list
-    assert castfit.get_origin_type([]) == list
+    assert castfit.get_origin_type(List[int]) is list
+    assert castfit.get_origin_type(list) is list
+    assert castfit.get_origin_type([]) is list
 
     class MyList(List[int]):
         pass

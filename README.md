@@ -1,16 +1,15 @@
-# castfit
+# castfit: basic type casting
 
-_Basic type casting._
-
-[![Build Status](https://img.shields.io/github/actions/workflow/status/metaist/castfit/.github/workflows/ci.yaml?branch=main&style=for-the-badge)](https://github.com/metaist/castfit/actions)
-[![castfit on PyPI](https://img.shields.io/pypi/v/castfit.svg?color=blue&style=for-the-badge)](https://pypi.org/project/castfit)
-[![Supported Python versions](https://img.shields.io/pypi/pyversions/castfit?style=for-the-badge)](https://pypi.org/project/castfit)
-
-[Changelog] - [Issues] - [Documentation]
-
-[changelog]: https://github.com/metaist/castfit/blob/main/CHANGELOG.md
-[issues]: https://github.com/metaist/castfit/issues
-[documentation]: https://metaist.github.io/castfit/
+<p align="center">
+  <a href="https://metaist.github.io/castfit/"><img alt="Cuddles the Cat" width="200" src="https://raw.githubusercontent.com/metaist/castfit/main/cats-fit.png" /></a><br />
+  <em>Cuddles the Cat<br />
+  "If it fits, I sits."</em>
+</p>
+<p align="center">
+  <a href="https://github.com/metaist/castfit/actions/workflows/ci.yaml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/metaist/castfit/.github/workflows/ci.yaml?branch=main&logo=github"/></a>
+  <a href="https://pypi.org/project/castfit"><img alt="PyPI" src="https://img.shields.io/pypi/v/castfit.svg?color=blue" /></a>
+  <a href="https://pypi.org/project/castfit"><img alt="Supported Python Versions" src="https://img.shields.io/pypi/pyversions/castfit" /></a>
+</p>
 
 ## Why?
 
@@ -25,6 +24,8 @@ I'm writing more and more type-checked code, but I often get a bunch of strings 
 ```bash
 python -m pip install castfit
 ```
+
+Alternatively, you can just [download the single file](https://raw.githubusercontent.com/metaist/castfit/main/src/castfit/__init__.py) and name it `castfit.py`.
 
 ## Example
 
