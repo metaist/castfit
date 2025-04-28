@@ -397,5 +397,14 @@ def to_tuple(value: Any, kind: TypeForm[tuple[Any, ...]] = tuple) -> tuple[Any, 
 def to_datetime(value: Any, kind: Type[datetime] = datetime) -> datetime:
     """Cast `value` into a `datetime`."""
     cls: Type[datetime] = get_origin_type(kind)
-    # TODO: Handle other kinds of casts (e.g., int -> datetime)
-    return cls.fromisoformat(value)
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, (int, float)):
+        return cls.fromtimestamp(value)
+    if isinstance(value, str):
+        return cls.fromisoformat(value)
+    if isinstance(value, (list, tuple)):  # try to unpack values
+        return cls(*value)
+    if isinstance(value, dict):
+        return cls(**value)
+    raise ValueError(f"Cannot parse {value!r} into {kind}")
