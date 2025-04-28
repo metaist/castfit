@@ -96,7 +96,8 @@ Ignored = Optional[Any]
 
 TypeForm = Union[Type[T], Any]
 """`Type` and special forms like `All`, `Union`, etc."""
-# NOTE: We want something like `Union[Type[T], _SpecialForm]`, but it doesn't work.
+# NOTE: We have a union with `Any` instead of `_SpecialForm` because
+# neither pyright nor mypy can handle `_SpecialForm`.
 
 CheckFn = Callable[[Any, TypeForm[Any]], bool]
 """Function signature that checks if a value is of a type."""
