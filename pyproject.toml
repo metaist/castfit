@@ -29,25 +29,23 @@ dependencies = [
 ]
 optional-dependencies = { dev = [
   # dev => latest
-  "build",
   "cogapp",
   "coverage",
   "ds-run",
   "mypy",
   "pdoc3",
-  "pip",
   "pyright",
   "pytest-cov",
   "pytest",
   "ruff",
 ] }
 readme = "README.md"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE.md"]
 authors = [{ name = "Metaist LLC", email = "metaist@metaist.com" }]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
-  "License :: OSI Approved :: MIT License",
   "Natural Language :: English",
   "Operating System :: OS Independent",
   "Programming Language :: Python",
@@ -57,28 +55,34 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Topic :: Software Development :: Libraries",
   "Typing :: Typed",
 ]
 
 [tool.coverage.report]
+exclude_lines = ["pragma: no cover", "@overload"]
 exclude_also = ["no cover: start(?s:.)*?no cover: stop"]
+
+[tool.pyright]
+exclude = ["**/_vendor/**"]
 
 [tool.ds.scripts] # run dev scripts <https://github.com/metaist/ds>
 # Lint
 lint = ["ruff-*", "+cspell"]
-ruff-format = "ruff format ${@:-.}"
-ruff-lint = "ruff check --fix ${@:-.}"
-cspell = "cspell --gitignore '**/*.{py,txt,md,markdown}'"
+ruff-format = "uvx ruff format ${@:-.}"
+ruff-lint = "uvx ruff check --fix ${@:-.}"
+cspell = "npx cspell lint --unique --gitignore --exclude '**/_vendor/**' '**/*.{py,txt,md,markdown}' "
 
 # Type Check
 types = ["pyright", "mypy"]
-pyright = "pyright src test"
+pyright = "npx pyright src test"
 mypy = """
   mypy \
     --strict \
     --install-types \
     --non-interactive \
+    --exclude '/_vendor/' \
     src test
 """
 
@@ -90,12 +94,13 @@ test.shell = """
     pytest \
       --doctest-modules \
       --doctest-ignore-import-errors \
+      "--ignore-glob=*/_vendor/*" \
       $@ src test;
-  coverage report --omit=src/cog_helpers.py -m
+  coverage report --omit=src/cog_helpers.py --omit '*/_vendor/*' -m
 """
 
 coverage-report = "coverage html"
-coverage-serve = { shell = "python -m http.server 8080", cwd = "htmlcov" }
+coverage-serve = { shell = "uv run -m http.server 8080", cwd = "htmlcov" }
 coverage = ["coverage-*"]
 
 # Documentation
@@ -104,7 +109,7 @@ cog = "cog -r README.md"
 pdoc = """
   rm -rf docs;
   mkdir -p docs;
-  pdoc \
+  pdoc3 \
     --html \
     --output-dir docs \
     --config sort_identifiers=False \
@@ -121,16 +126,19 @@ dev.composite = ["lint", "types", "test"]
 dev-all.help = "check every supported python version"
 dev-all.shell = """
   ds lint;
-  versions=($(rg -oN --pcre2 '(?<=Python :: )(\\d+\\.\\d+)' pyproject.toml));
+  versions=($(sed -n 's/.*Python :: \\([0-9][0-9]*\\.[0-9][0-9]*\\)",*/\\1/p' pyproject.toml));
   for v in ${versions[@]};
   do
     uv run --isolated --all-extras --python $v -- ds types test;
+    if [[ $? != 0 ]]; then
+      exit $?;
+    fi;
     echo;
   done;
 """
 
 # Build
-build = ["pip install -e .", "python -m build"]
+build = "uv build"
 clean = """
   rm -rf .mypy_cache;
   rm -rf .pytest_cache;
