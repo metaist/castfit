@@ -169,7 +169,10 @@ def to_type(
         return cast(T, caster(value, kind))
 
     try:
-        return cast(T, origin(value))  # type: ignore[call-arg]
+        if isinstance(value, dict):
+            return castfit(kind, value)
+        else:
+            return cast(T, origin(value))  # type: ignore[call-arg]
     except Exception:
         raise TypeError(f"Cannot cast {value!r} to {kind}")
 

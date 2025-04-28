@@ -163,3 +163,22 @@ def test_spec_dataclass() -> None:
     assert have.name == "777"
     assert have.age == 21
     assert have.loc == Path("/")
+
+
+def test_nested_class() -> None:
+    """Cast data into nested classes."""
+
+    @dataclass
+    class Dog:
+        name: str
+        age: int
+
+    @dataclass
+    class Owner:
+        dogs: list[Dog]
+
+    dogs = [{"name": "Fido", "age": "3"}, {"name": "Spot", "age": "5"}]
+    have: Owner = castfit.castfit(Owner, {"dogs": dogs})
+    assert len(have.dogs) == 2
+    assert have.dogs[0].name == "Fido"
+    assert have.dogs[1].age == 5
