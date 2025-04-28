@@ -308,15 +308,17 @@ def is_list(value: Any, kind: TypeForm[T]) -> bool:
         return False
     if len(value) == 0:  # list() matches list[Any]
         return True
-    vt = get_args(kind)[0]
-    return all(is_type(v, vt) for v in value)
+    args = get_args(kind)
+    val_type = args[0] if args else Any
+    return all(is_type(val, val_type) for val in value)
 
 
 @casts_to(list)
 def to_list(value: Any, kind: TypeForm[list[T]] = list) -> list[T]:
     """Cast `value` into `list`."""
     cls: Type[list[T]] = get_origin_type(kind)
-    val_type = get_args(kind)[0]
+    args = get_args(kind)
+    val_type = args[0] if args else Any
     return cls(to_type(val, val_type) for val in value)
 
 
@@ -327,7 +329,8 @@ def is_set(value: Any, kind: TypeForm[T]) -> bool:
         return False
     if len(value) == 0:  # set() matches set[Any]
         return True
-    val_type = get_args(kind)[0]
+    args = get_args(kind)
+    val_type = args[0] if args else Any
     return all(is_type(val, val_type) for val in value)
 
 
@@ -335,7 +338,8 @@ def is_set(value: Any, kind: TypeForm[T]) -> bool:
 def to_set(value: Any, kind: TypeForm[set[T]] = set) -> set[T]:
     """Cast `value` into `set`."""
     cls: Type[set[T]] = get_origin_type(kind)
-    val_type = get_args(kind)[0]
+    args = get_args(kind)
+    val_type = args[0] if args else Any
     return cls(to_type(val, val_type) for val in value)
 
 
@@ -346,8 +350,9 @@ def is_dict(value: Any, kind: TypeForm[T]) -> bool:
         return False
     if len(value) == 0:  # dict() matches dict[Any, Any]
         return True
-    kt, vt = get_args(kind)
-    return all(is_type(k, kt) and is_type(v, vt) for k, v in value.items())
+    args = get_args(kind)
+    key_type, val_type = args if args else (Any, Any)
+    return all(is_type(k, key_type) and is_type(v, val_type) for k, v in value.items())
 
 
 @casts_to(dict)
@@ -356,8 +361,9 @@ def to_dict(value: Any, kind: TypeForm[dict[K, T]] = dict) -> dict[K, T]:
     cls: Type[dict[K, T]] = get_origin_type(kind)
     if len(value) == 0:
         return cls()
-    kt, vt = get_args(kind)
-    return cls({to_type(k, kt): to_type(v, vt) for k, v in value.items()})
+    args = get_args(kind)
+    key_type, val_type = args if args else (Any, Any)
+    return cls({to_type(k, key_type): to_type(v, val_type) for k, v in value.items()})
 
 
 @checks_type(tuple)
