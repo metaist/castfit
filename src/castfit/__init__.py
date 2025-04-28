@@ -173,8 +173,8 @@ def to_type(
             return castfit(kind, value)
         else:
             return cast(T, origin(value))  # type: ignore[call-arg]
-    except Exception:
-        raise TypeError(f"Cannot cast {value!r} to {kind}")
+    except Exception as e:
+        raise TypeError(f"Cannot cast {value!r} to {kind}") from e
 
 
 def get_origin_type(given: TypeForm[T]) -> Type[T]:
