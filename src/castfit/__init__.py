@@ -118,18 +118,37 @@ TYPE_CASTS: Casts = {}
 
 
 @overload
-def castfit(spec: Type[T], data: dict[str, Any]) -> T: ...
+def castfit(
+    spec: Type[T],
+    data: dict[str, Any],
+    *,
+    checks: Checks | None = None,
+    casts: Casts | None = None,
+) -> T: ...
 
 
 @overload
-def castfit(spec: T, data: dict[str, Any]) -> T: ...
+def castfit(
+    spec: T,
+    data: dict[str, Any],
+    *,
+    checks: Checks | None = None,
+    casts: Casts | None = None,
+) -> T: ...
 
 
-def castfit(spec: Type[T] | T, data: dict[str, Any]) -> T:
+def castfit(
+    spec: Type[T] | T,
+    data: dict[str, Any],
+    *,
+    checks: Checks | None = None,
+    casts: Casts | None = None,
+) -> T:
     """Construct a `spec` using `data` that has been cast appropriately."""
     type_hints = get_type_hints(spec)
     typed_data: dict[str, Any] = {
-        name: to_type(value, type_hints.get(name, Any)) for name, value in data.items()
+        name: to_type(value, type_hints.get(name, Any), checks=checks, casts=casts)
+        for name, value in data.items()
     }
     if is_dataclass(spec) and isinstance(spec, type):
         return cast(T, spec(**typed_data))
@@ -141,7 +160,7 @@ def castfit(spec: Type[T] | T, data: dict[str, Any]) -> T:
 
 
 # TODO 2025-10-31 @ py3.9 EOL: make return type `TypeGuard[T]`
-def is_type(value: Any, kind: TypeForm[Any], checks: Optional[Checks] = None) -> bool:
+def is_type(value: Any, kind: TypeForm[Any], checks: Checks | None = None) -> bool:
     """Return `True` if `value` is of a type compatible with `kind`."""
     checks = checks or TYPE_CHECKS
     origin = get_origin(kind) or kind
@@ -154,8 +173,9 @@ def is_type(value: Any, kind: TypeForm[Any], checks: Optional[Checks] = None) ->
 def to_type(
     value: Any,
     kind: TypeForm[T],
-    checks: Optional[Checks] = None,
-    casts: Optional[Casts] = None,
+    *,
+    checks: Checks | None = None,
+    casts: Casts | None = None,
 ) -> T:
     """Try to cast `value` to the type of `kind`."""
     checks = checks or TYPE_CHECKS

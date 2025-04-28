@@ -68,6 +68,11 @@ def test_basic() -> None:
         castfit.to_type("break", int)
 
 
+def test_custom() -> None:
+    """Custom conversions."""
+    assert castfit.to_type("123", int, casts={int: lambda _v, _t: 999}) == 999
+
+
 def test_literal() -> None:
     """`Literal` requires one of its values."""
     assert castfit.to_literal("r", Literal["r", "rw"]) == "r"
