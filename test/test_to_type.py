@@ -116,9 +116,12 @@ def test_containers() -> None:
 
 
 def test_datetime() -> None:
-    """Cast `str` to `datetime`."""
+    """Cast `int` or `str` to `datetime`."""
     assert castfit.to_type("2023-12-12T12:00:00", datetime) == datetime(
         2023, 12, 12, 12
+    )
+    assert castfit.to_type(1745865691.2135372, datetime) == datetime(
+        2025, 4, 28, 14, 41, 31, 213537
     )
 
 
