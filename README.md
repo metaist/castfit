@@ -13,15 +13,14 @@
 
 ## Why?
 
-I'm writing more and more type-checked code, but I often get a bunch of strings I need to convert (e.g., from [`docopt`](https://github.com/docopt/docopt)).
-
-- [`pydantic`](https://github.com/pydantic/pydantic) feels heavy.
-- [`type-docopt`](https://github.com/dreamgonfly/type-docopt) uses a new syntax.
-- [`bottle`](https://github.com/bottlepy/bottle) seems like good inspiration for small, useful libraries.
+`castfit` helps you convert things like command-line arguments (e.g., from [`docopt`](https://github.com/docopt/docopt)) and simple API responses into something more typed with low overhead.
 
 ## Install
 
 ```bash
+uv add castfit
+
+# old school:
 python -m pip install castfit
 ```
 
@@ -45,6 +44,13 @@ assert bob.age == 4
 assert bob.weight == 3.2
 assert bob.logo == Path("./bob.png")
 ```
+
+## Other Projects
+
+- [`pydantic`](https://github.com/pydantic/pydantic) feels heavy.
+- [`cattrs`](https://catt.rs/) requires classes to be decorated in a very specific way.
+- [`type-docopt`](https://github.com/dreamgonfly/type-docopt) uses a new syntax.
+- [`bottle`](https://github.com/bottlepy/bottle) seems like good inspiration for small, useful libraries.
 
 ## License
 
