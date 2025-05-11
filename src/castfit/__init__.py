@@ -23,13 +23,20 @@ from typing import TypeVar
 from typing import Union
 import sys
 
-# TODO 2026-10-31 @ py3.10 EOL: remove conditional
-if sys.version_info >= (3, 11):  # pragma: no cover
+
+# TODO 2025-10-31 @ py3.9 EOL: move imports above
+if sys.version_info >= (3, 10):  # pragma: no cover
     from types import NoneType
+    from types import UnionType
+else:  # pragma: no cover
+    NoneType = type(None)  # same as `types.NoneType`
+    UnionType = Union  # workaround
+
+# TODO 2026-10-31 @ py3.10 EOL: move imports above
+if sys.version_info >= (3, 11):  # pragma: no cover
     from typing import Never
 else:  # pragma: no cover
-    NoneType = type(None)
-    Never = NoReturn
+    Never = NoReturn  # semantically same; syntactically different
 
 __all__ = [
     "__version__",
@@ -196,6 +203,7 @@ def to_type(
         if isinstance(value, dict):
             return castfit(kind, value)
         else:
+            # We try to pass the value to the constructor.
             return cast(T, origin(value))  # type: ignore[call-arg]
     except Exception as e:
         raise TypeError(f"Cannot cast {value!r} to {kind}") from e
@@ -291,13 +299,13 @@ def to_literal(value: T, kind: TypeForm[T]) -> T:
     return value
 
 
-@checks_type(Union)
+@checks_type(Union, UnionType)
 def is_union(value: Any, kind: TypeForm[T]) -> bool:
     """Return `True` if `value` is a valid `Union`."""
     return any(is_type(value, val_type) for val_type in get_args(kind))
 
 
-@casts_to(Union)
+@casts_to(Union, UnionType)
 def to_union(value: Any, kind: TypeForm[T]) -> T:
     for arg in get_args(kind):
         try:

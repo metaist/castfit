@@ -97,7 +97,7 @@ test.shell = """
       --doctest-ignore-import-errors \
       "--ignore-glob=*/_vendor/*" \
       $@ src test;
-  coverage report --omit=src/cog_helpers.py --omit '*/_vendor/*' -m
+  coverage report --omit='src/cog_helpers.py,*/_vendor/*' -m
 """
 
 coverage-report = "coverage html"
