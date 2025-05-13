@@ -71,7 +71,7 @@ def test_basic() -> None:
 
 def test_custom() -> None:
     """Custom conversions."""
-    assert castfit.to_type("123", int, casts={int: lambda v, t, ch, ca: 999}) == 999
+    assert castfit.to_type("123", int, casts={(str, int): lambda v: 999}) == 999
 
 
 def test_literal() -> None:

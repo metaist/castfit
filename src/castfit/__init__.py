@@ -59,7 +59,7 @@ __all__ = [
     #
     # extensions
     "checks_type",
-    "casts_to",
+    "converts",
     #
     # lower-level API
     "get_origin_type",
@@ -93,6 +93,9 @@ __pubdate__ = "2025-04-28T14:32:37Z"
 DEFAULT_ENCODING = "utf-8"
 """Default file encoding."""
 
+F = TypeVar("F")
+"""Type variable for functions."""
+
 K = TypeVar("K")
 """Type variable for keys."""
 
@@ -103,9 +106,10 @@ Ignored = Optional[Any]
 """A function argument that is ignored."""
 
 TypeForm = Union[type[T], Any]
+# TypeForm = Union[type[T], type, type(Any), type(Union), UnionType, _SpecialForm]
+TypeForm = Union[type[T], Any]
 """`Type` and special forms like `Any`, `Union`, etc."""
-# NOTE: We have a union with `Any` instead of `_SpecialForm` because
-# neither pyright nor mypy can handle `_SpecialForm`.
+# NOTE: We want `type[T] | _SpecialForm` but type checkers can't handle it.
 
 CheckFn = Callable[[Any, TypeForm[T], "Checks | None"], bool]
 """Function signature that checks if a value is of a type."""
@@ -116,14 +120,66 @@ Checks = dict[TypeForm[Any], CheckFn[Any]]
 TYPE_CHECKS: Checks = {}
 """Mapping of types to check functions."""
 
-CastFn = Callable[[Any, TypeForm[T], "Checks | None", "Casts | None"], T]
+CastFnShort = Callable[[Any], Any]
+"""Function signature for a simple caster."""
+
+CastFnLong = Callable[[Any, TypeForm[T], "Checks | None", "Casts | None"], T]
+"""Function signature for a full caster."""
+
+CastFn = Union[CastFnShort, CastFnLong[T]]
 """Function signature that maps a value to a type."""
 
-Casts = dict[TypeForm[Any], CastFn[Any]]
+Casts = dict[tuple[TypeForm[Any], TypeForm[Any]], CastFn[Any]]
 """Type of internal mapping of types to cast functions."""
 
 TYPE_CASTS: Casts = {}
 """Mapping of types to cast functions."""
+
+### Utilities ###
+
+
+def setattrs(obj: T, **values: dict[str, Any]) -> T:
+    """Like `setattr()` but for multiple values and returns the object."""
+    for name, val in values.items():
+        setattr(obj, name, val)
+    return obj
+
+
+def get_origin_type(item: TypeForm[T] | T) -> type[T]:
+    """Returns the `item` origin, the `item` itself, or `type(item)`.
+
+    See: [typing.get_origin](https://docs.python.org/3/library/typing.html#typing.get_origin)
+    """
+    origin = get_origin(item) or item
+    if isinstance(origin, type) or origin in SPECIAL_FORMS:
+        return cast(type[T], origin)  # cast due to mypy
+    return cast(type[T], type(item))  # cast due to mypy
+
+
+def get_types(item: type[T] | FunctionType | LambdaType) -> dict[str, Any]:
+    """Returns names and inferred types for `item`.
+
+    See: [typing.get_type_hints](https://docs.python.org/3/library/typing.html#typing.get_type_hints)
+    """
+    hints = get_type_hints(item)
+    if isinstance(item, GenericFunction):
+        result = {}
+        for param in signature(item).parameters.values():
+            result[param.name] = hints.get(param.name, Any)
+        result["return"] = hints.get("return", None)
+        return result
+
+    # type
+    for parent in reversed(item.__mro__):
+        for name, value in getattr(parent, "__dict__", {}).items():
+            if name in hints or name.startswith("__"):
+                continue
+            if value is not None:
+                hints[name] = type(value)
+            else:
+                hints[name] = Any
+    return hints
+
 
 ### Type Check ###
 
@@ -252,72 +308,62 @@ def to_type(
         return cast(T, value)
 
     casts = casts or TYPE_CASTS
-    origin: type[T] = get_origin(kind) or kind
-    caster = casts.get(origin)
+    src: type[T] = get_origin_type(value)
+    caster: Union[Callable[[Any], T], None] = get_converters(src, kind, checks, casts)
     try:
         if caster:
-            print(caster)
-            return cast(T, caster(value, kind, checks, casts))
-        return cast(T, to_class(value, kind, checks, casts))
+            return caster(value)
+        return to_class(value, cast(type[T], kind), checks, casts)
     except Exception as e:
         raise TypeError(f"Cannot cast {value!r} to {kind}") from e
 
 
-def set_caster(src: TypeForm[T], dest: TypeForm[K], fn: CastFn[Any]) -> CastFn[Any]:
-    """Define a type-caster for converting from `src` to `dest`."""
-    TYPE_CASTS[dest] = fn
-    return fn
+def converts(src: TypeForm[T], dest: TypeForm[K]) -> Callable[[F], F]:
+    """Define a type-caster from a `src` type to a `dest` type."""
 
-
-def casts_to(*types: Any) -> Callable[[T], T]:
-    """Define a type-caster for one or more types."""
-
-    def _factory(func: T) -> T:
-        for t in types:
-            set_caster(Any, t, cast(CastFn[T], func))
+    def _factory(func: F) -> F:
+        TYPE_CASTS[(src, dest)] = cast(CastFn[Any], func)
         return func
 
     return _factory
 
 
-def casting(src: Any, dest: Any) -> Callable[[T], T]:
-    def _factory(func: T) -> T:
-        set_caster(src, dest, cast(CastFn[T], func))
-        return func
+def get_converters(
+    src: TypeForm[T],
+    dest: TypeForm[K],
+    checks: Checks | None = None,
+    casts: Casts | None = None,
+) -> Callable[[Any], T] | None:
+    casts = casts or TYPE_CASTS
 
-    return _factory
+    def _wrap(
+        f: CastFn[Any], t: TypeForm[F], checks: Checks | None, casts: Casts | None
+    ) -> Callable[[Any], F]:
+        arity = len(signature(f).parameters)
+
+        def _result(v: Any) -> F:
+            if arity == 1:
+                f1 = cast(CastFnShort, f)
+                return cast(F, f1(v))
+            f2 = cast(CastFnLong[F], f)
+            return f2(v, t, checks, casts)
+
+        return _result
+
+    dest_origin: type[K] = get_origin_type(dest)
+    for left, right in [
+        (src, dest),
+        (src, dest_origin),
+        (Any, dest),
+        (Any, dest_origin),
+    ]:
+        if caster := casts.get((left, right)):
+            return _wrap(caster, dest, checks, casts)
+
+    return None
 
 
-def get_origin_type(given: TypeForm[T] | T) -> type[T]:
-    """Returns the `given` type, its origin, or `type(obj)`.
-
-    See: [typing.get_origin](https://docs.python.org/3/library/typing.html#typing.get_origin)
-    """
-    origin = get_origin(given) or given
-    if isinstance(origin, type):
-        return cast(type[T], origin)  # cast due to mypy
-    return cast(type[T], type(given))  # cast due to mypy
-
-
-def get_types(cls: type[T]) -> dict[str, Any]:
-    """Returns field names and inferred types for `given`.
-
-    See: [typing.get_type_hints](https://docs.python.org/3/library/typing.html#typing.get_type_hints)
-    """
-    hints = get_type_hints(cls)
-    for parent in reversed(cls.__mro__):
-        for name, value in getattr(cls, "__dict__", {}).items():
-            if name in hints or name.startswith("__"):
-                continue
-            if value is not None:
-                hints[name] = type(value)
-            else:
-                hints[name] = Any
-    return hints
-
-
-# @casts_to(Any)
-@casting(Any, Any)
+@converts(Any, Any)
 def to_any(
     value: T,
     kind: Ignored = Any,
@@ -328,7 +374,8 @@ def to_any(
     return value
 
 
-@casts_to(Never, NoReturn)
+@converts(Any, Never)
+@converts(Any, NoReturn)
 def to_never(
     value: Any,
     kind: Ignored = Never,
@@ -339,7 +386,7 @@ def to_never(
     raise TypeError(f"Cannot cast {value!r} to Never (nothing can)")
 
 
-@casts_to(NoneType)
+@converts(Any, NoneType)
 def to_none(
     value: Ignored = None,
     kind: Ignored = None,
@@ -350,7 +397,7 @@ def to_none(
     return None
 
 
-@casts_to(Literal)
+@converts(Any, Literal)
 def to_literal(
     value: T,
     kind: TypeForm[T],
@@ -363,7 +410,8 @@ def to_literal(
     raise TypeError(f"Cannot cast {value!r} to {kind}")
 
 
-@casts_to(Union, UnionType)
+@converts(Any, Union)
+@converts(Any, UnionType)
 def to_union(
     value: Any,
     kind: TypeForm[T],
@@ -378,7 +426,7 @@ def to_union(
     raise TypeError(f"Cannot cast {value!r} to {kind}")
 
 
-@casts_to(bytes)
+@converts(Any, bytes)
 def to_bytes(
     value: Any,
     kind: type[bytes] = bytes,
@@ -392,7 +440,7 @@ def to_bytes(
     return cls(value)
 
 
-@casts_to(str)
+@converts(Any, str)
 def to_str(
     value: Any,
     kind: type[str] = str,
@@ -406,7 +454,7 @@ def to_str(
     return cls(value)
 
 
-@casts_to(list)
+@converts(Any, list)
 def to_list(
     value: Any,
     kind: type[list[T]] = list,
@@ -420,7 +468,7 @@ def to_list(
     return cls(to_type(val, val_type, checks=checks, casts=casts) for val in value)
 
 
-@casts_to(set)
+@converts(Any, set)
 def to_set(
     value: Any,
     kind: type[set[T]] = set,
@@ -434,7 +482,7 @@ def to_set(
     return cls(to_type(val, val_type, checks=checks, casts=casts) for val in value)
 
 
-@casts_to(dict)
+@converts(Any, dict)
 def to_dict(
     value: Any,
     kind: type[dict[K, T]] = dict,
@@ -457,7 +505,7 @@ def to_dict(
     )
 
 
-@casts_to(tuple)
+@converts(Any, tuple)
 def to_tuple(
     value: Any,
     kind: type[tuple[Any, ...]] = tuple,
@@ -479,7 +527,7 @@ def to_tuple(
     )
 
 
-@casts_to(datetime)
+@converts(Any, datetime)
 def to_datetime(
     value: Any,
     kind: type[datetime] = datetime,
@@ -499,13 +547,6 @@ def to_datetime(
     if isinstance(value, dict):
         return cls(**value)
     raise ValueError(f"Cannot parse {value!r} into {kind}")
-
-
-def setattrs(obj: T, **values: dict[str, Any]) -> T:
-    """Like `setattr()` but for multiple values and returns the object."""
-    for name, val in values.items():
-        setattr(obj, name, val)
-    return obj
 
 
 def to_class(

@@ -18,6 +18,7 @@
     "pathlib",
     "pdoc",
     "pdoc3",
+    "popleft",
     "pycache",
     "pydantic",
     "pypa",
