@@ -14,6 +14,7 @@
     "mypy",
     "nojekyll",
     "oneline",
+    "outl",
     "pathlib",
     "pdoc",
     "pdoc3",
