@@ -6,8 +6,12 @@
 
 # std
 from __future__ import annotations
+from collections.abc import Callable as Callable2
 from dataclasses import is_dataclass
 from datetime import datetime
+from inspect import signature
+from types import FunctionType
+from types import LambdaType
 from typing import Any
 from typing import Callable
 from typing import cast
@@ -56,6 +60,7 @@ __all__ = [
     "castfit",
     "is_type",
     "to_type",
+    "is_subtype",
     #
     # extensions
     "checks_type",
@@ -105,7 +110,18 @@ T = TypeVar("T")
 Ignored = Optional[Any]
 """A function argument that is ignored."""
 
-TypeForm = Union[type[T], Any]
+GenericLiteral = type(Literal[Any])
+"""Type of a generic `Literal`."""
+
+GenericUnion = (type(Union[str, int]), UnionType)
+"""Type of a generic `Union`."""
+
+GenericFunction = (FunctionType, LambdaType)
+"""Type of function."""
+
+SPECIAL_FORMS = (Any, Never, NoReturn, NoneType, Literal, Union, UnionType)
+"""Special forms."""
+
 # TypeForm = Union[type[T], type, type(Any), type(Union), UnionType, _SpecialForm]
 TypeForm = Union[type[T], Any]
 """`Type` and special forms like `Any`, `Union`, etc."""
@@ -188,18 +204,51 @@ def is_type(value: Any, kind: TypeForm[T], checks: Checks | None = None) -> bool
     """Return `True` if `value` is of a type compatible with `kind`."""
     checks = checks or TYPE_CHECKS
     origin = get_origin(kind) or kind
-    checker = checks.get(origin)
-    if checker:
+    if checker := checks.get(origin):
         return checker(value, kind, checks)
-    return isinstance(value, kind)
+    return isinstance(value, cast(type, kind))
 
 
-def checks_type(*types: Any) -> Callable[[CheckFn[Any]], CheckFn[Any]]:
+def is_subtype(t1: TypeForm[T], t2: TypeForm[K]) -> bool:
+    """Return `True` if `t1` is a subtype of `t1`, `False` otherwise.
+
+    Extends `issubclass` to `Any`, `Never`, `NoneType`, `Literal`, `Union`.
+    """
+    if t2 is Any:
+        return True
+    if t2 in (Never, NoReturn):
+        return False
+    if t2 is NoneType:
+        return t1 in (None, NoneType)
+
+    type1, type2 = type(t1), type(t2)
+    args1, args2 = get_args(t1), get_args(t2)
+
+    if type2 is GenericLiteral:
+        return type1 is GenericLiteral and set(args1).issubset(args2)
+    if type1 is GenericLiteral:
+        return all(is_type(arg, t2) for arg in args1)
+
+    if type2 in GenericUnion:
+        return t1 in args2 or type1 in GenericUnion and set(args1).issubset(args2)
+
+    if args1 or args2:  # generics
+        origin1, origin2 = get_origin(t1), get_origin(t2)
+        return (
+            len(args1) == len(args2)
+            and is_subtype(origin1, origin2)
+            and all(is_subtype(x, y) for x, y in zip(args1, args2))
+        )
+
+    return t1 is t2 or issubclass(t1, t2)
+
+
+def checks_type(*types: Any) -> Callable[[F], F]:
     """Define a type-checker for one or more types."""
 
-    def _factory(func: CheckFn[Any]) -> CheckFn[Any]:
+    def _factory(func: F) -> F:
         for t in types:
-            TYPE_CHECKS[t] = func
+            TYPE_CHECKS[t] = cast(CheckFn[Any], func)
         return func
 
     return _factory
@@ -291,6 +340,26 @@ def is_tuple(value: Any, kind: TypeForm[T], checks: Checks | None = None) -> boo
     return len(value) == len(args) and all(
         is_type(v, vt, checks=checks) for v, vt in zip(value, args)
     )
+
+
+@checks_type(Callable, Callable2)
+def is_callable(value: Any, kind: TypeForm[T], checks: Checks | None = None) -> bool:
+    """Return `True` if `value` matches the type signature of `kind`."""
+    if not callable(value):
+        return False
+    args = get_args(kind)
+    hints = get_types(cast(FunctionType, value))
+    return_type = hints.pop("return")
+    if not is_subtype(return_type, args[1]):
+        return False
+    if args[0] is Ellipsis:  # don't check args
+        return True
+    if len(args[0]) != len(hints):
+        return False
+    for (name, have), want in zip(hints.items(), args[0]):
+        if not is_subtype(have, want):
+            return False
+    return True
 
 
 ### Casting ###
