@@ -132,7 +132,7 @@ def test_containers() -> None:
 def test_datetime() -> None:
     """Cast to `datetime`."""
     dt = datetime(2023, 12, 12, 12)
-    assert castfit.to_datetime(dt, datetime) == dt  # direct to avoid check
+    assert castfit.to_datetime(dt) == dt  # direct to avoid check
     assert castfit.to_type([2023, 12, 12, 12], datetime) == dt
     assert castfit.to_type((2023, 12, 12, 12), datetime) == dt
     assert castfit.to_type("2023-12-12T12:00:00", datetime) == dt
