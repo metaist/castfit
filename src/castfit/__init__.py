@@ -26,11 +26,9 @@ import sys
 if sys.version_info >= (3, 10):  # pragma: no cover
     from types import NoneType
     from types import UnionType
-    from typing import TypeGuard
 else:  # pragma: no cover
     NoneType = type(None)  # same as `types.NoneType`
     UnionType = Union  # workaround
-    TypeGuard = bool
 
 # TODO 2026-10-31 @ py3.10 EOL: move imports above
 if sys.version_info >= (3, 11):  # pragma: no cover
@@ -109,7 +107,7 @@ TypeForm = Union[type[T], Any]
 # NOTE: We have a union with `Any` instead of `_SpecialForm` because
 # neither pyright nor mypy can handle `_SpecialForm`.
 
-CheckFn = Callable[[Any, TypeForm[T], "Checks | None"], TypeGuard[T]]
+CheckFn = Callable[[Any, TypeForm[T], "Checks | None"], bool]
 """Function signature that checks if a value is of a type."""
 
 Checks = dict[TypeForm[Any], CheckFn[Any]]
@@ -130,9 +128,7 @@ TYPE_CASTS: Casts = {}
 ### Type Check ###
 
 
-def is_type(
-    value: Any, kind: TypeForm[T], checks: Checks | None = None
-) -> TypeGuard[T]:
+def is_type(value: Any, kind: TypeForm[T], checks: Checks | None = None) -> bool:
     """Return `True` if `value` is of a type compatible with `kind`."""
     checks = checks or TYPE_CHECKS
     origin = get_origin(kind) or kind
@@ -154,9 +150,7 @@ def checks_type(*types: Any) -> Callable[[CheckFn[Any]], CheckFn[Any]]:
 
 
 @checks_type(Any)
-def is_any(
-    value: Any, kind: TypeForm[T] = Any, checks: Checks | None = None
-) -> TypeGuard[T]:
+def is_any(value: Any, kind: TypeForm[T] = Any, checks: Checks | None = None) -> bool:
     """Always return `True`."""
     return True
 
@@ -164,7 +158,7 @@ def is_any(
 @checks_type(Never, NoReturn)
 def is_never(
     value: Any, kind: TypeForm[T] = Never, checks: Checks | None = None
-) -> TypeGuard[T]:
+) -> bool:
     """Always return `False`."""
     return False
 
@@ -172,31 +166,25 @@ def is_never(
 @checks_type(NoneType)
 def is_none(
     value: Any, kind: TypeForm[T] = NoneType, checks: Checks | None = None
-) -> TypeGuard[T]:
+) -> bool:
     """Return `True` if `value` is `None`."""
     return value is None
 
 
 @checks_type(Literal)
-def is_literal(
-    value: Any, kind: TypeForm[T], checks: Checks | None = None
-) -> TypeGuard[T]:
+def is_literal(value: Any, kind: TypeForm[T], checks: Checks | None = None) -> bool:
     """Return `True` if `value` is a valid `Literal`."""
     return value in get_args(kind)
 
 
 @checks_type(Union, UnionType)
-def is_union(
-    value: Any, kind: TypeForm[T], checks: Checks | None = None
-) -> TypeGuard[T]:
+def is_union(value: Any, kind: TypeForm[T], checks: Checks | None = None) -> bool:
     """Return `True` if `value` is a valid `Union`."""
     return any(is_type(value, val_type, checks=checks) for val_type in get_args(kind))
 
 
 @checks_type(list)
-def is_list(
-    value: Any, kind: TypeForm[T], checks: Checks | None = None
-) -> TypeGuard[T]:
+def is_list(value: Any, kind: TypeForm[T], checks: Checks | None = None) -> bool:
     """Return `True` if `value` is a valid `list`."""
     if not isinstance(value, list):
         return False
@@ -208,7 +196,7 @@ def is_list(
 
 
 @checks_type(set)
-def is_set(value: Any, kind: TypeForm[T], checks: Checks | None = None) -> TypeGuard[T]:
+def is_set(value: Any, kind: TypeForm[T], checks: Checks | None = None) -> bool:
     """Return `True` if `value` is a valid `set`."""
     if not isinstance(value, set):
         return False
@@ -220,9 +208,7 @@ def is_set(value: Any, kind: TypeForm[T], checks: Checks | None = None) -> TypeG
 
 
 @checks_type(dict)
-def is_dict(
-    value: Any, kind: TypeForm[T], checks: Checks | None = None
-) -> TypeGuard[T]:
+def is_dict(value: Any, kind: TypeForm[T], checks: Checks | None = None) -> bool:
     """Return `True` if `value` is a valid `dict`."""
     if not isinstance(value, dict):
         return False
@@ -237,9 +223,7 @@ def is_dict(
 
 
 @checks_type(tuple)
-def is_tuple(
-    value: Any, kind: TypeForm[T], checks: Checks | None = None
-) -> TypeGuard[T]:
+def is_tuple(value: Any, kind: TypeForm[T], checks: Checks | None = None) -> bool:
     """Return `True` if `value` is a valid `tuple`."""
     args = get_args(kind)
     if not isinstance(value, tuple):
@@ -332,7 +316,8 @@ def get_types(cls: type[T]) -> dict[str, Any]:
     return hints
 
 
-@casts_to(Any)
+# @casts_to(Any)
+@casting(Any, Any)
 def to_any(
     value: T,
     kind: Ignored = Any,
@@ -374,7 +359,7 @@ def to_literal(
 ) -> T:
     """Return `value` if it is one of the `Literal` values."""
     if is_literal(value, kind, checks):
-        return cast(T, value)
+        return value
     raise TypeError(f"Cannot cast {value!r} to {kind}")
 
 
