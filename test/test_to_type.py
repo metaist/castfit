@@ -137,7 +137,7 @@ def test_datetime() -> None:
     assert castfit.to_type((2023, 12, 12, 12), datetime) == dt
     assert castfit.to_type("2023-12-12T12:00:00", datetime) == dt
     assert castfit.to_type(dict(year=2023, month=12, day=12, hour=12), datetime) == dt
-    assert castfit.to_type(1745865691.2135372, datetime) == datetime(
+    assert castfit.to_type(1745865691.213537, datetime) == datetime(
         2025, 4, 28, 14, 41, 31, 213537
     )
 
