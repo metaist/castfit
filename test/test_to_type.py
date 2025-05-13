@@ -161,6 +161,20 @@ def test_castfit_class() -> None:
     assert have.loc == Path("/")
 
 
+def test_spec_untyped() -> None:
+    """Cast data using a an untyped class with defaults."""
+
+    class Spec:
+        name = None  # typed as `Any`
+        age = 0  # typed as `int`
+        loc: Path
+
+    have: Spec = castfit.castfit(Spec, dict(name="Bob", age="21", loc="/"))
+    assert have.name == "Bob"
+    assert have.age == 21
+    assert have.loc == Path("/")
+
+
 def test_spec_dataclass() -> None:
     """Cast data using a dataclass."""
 
