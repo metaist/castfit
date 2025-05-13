@@ -161,20 +161,6 @@ def test_castfit_class() -> None:
     assert have.loc == Path("/")
 
 
-def test_castfit_object() -> None:
-    """Cast data using an instance."""
-
-    class Spec:
-        name: str
-        age: int
-        loc: Path
-
-    have: Spec = castfit.castfit(Spec(), dict(name="Bob", age="21", loc="/"))
-    assert have.name == "Bob"
-    assert have.age == 21
-    assert have.loc == Path("/")
-
-
 def test_spec_dataclass() -> None:
     """Cast data using a dataclass."""
 

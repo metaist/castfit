@@ -440,3 +440,35 @@ def to_datetime(value: Any, kind: Type[datetime] = datetime) -> datetime:
     if isinstance(value, dict):
         return cls(**value)
     raise ValueError(f"Cannot parse {value!r} into {kind}")
+def to_class(
+    value: Any,
+    kind: type[T],
+    checks: Checks | None = None,
+    casts: Casts | None = None,
+) -> T:
+    """Cast `value` to an instance of `kind`."""
+    cls: type[T] = get_origin_type(kind)
+    if isinstance(value, dict):
+        hints = get_types(cls)
+        data: dict[str, Any] = {
+            name: to_type(value.get(name, hint), hint, checks=checks, casts=casts)
+            for name, hint in hints.items()
+        }
+        if is_dataclass(cls):
+            return cast(T, cls(**data))
+        else:
+            return setattrs(cls(), **data)
+
+    # try passing it to the constructor
+    return cls(value)  # type: ignore[call-arg]
+
+
+def castfit(
+    spec: type[T],
+    data: dict[str, Any],
+    *,
+    checks: Checks | None = None,
+    casts: Casts | None = None,
+) -> T:
+    """Construct a `spec` using `data` that has been cast appropriately."""
+    return to_class(data, spec, checks=checks, casts=casts)
