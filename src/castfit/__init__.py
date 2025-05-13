@@ -249,10 +249,32 @@ def casts_to(*types: Any) -> Callable[[T], T]:
     return _factory
 
 
-@checks_type(Any)
-def is_any(_value: Ignored = None, _kind: Ignored = Any) -> bool:
-    """Always return `True`."""
-    return True
+def get_origin_type(given: TypeForm[T] | T) -> type[T]:
+    """Returns the `given` type, its origin, or `type(obj)`.
+
+    See: [typing.get_origin](https://docs.python.org/3/library/typing.html#typing.get_origin)
+    """
+    origin = get_origin(given) or given
+    if isinstance(origin, type):
+        return cast(type[T], origin)  # cast due to mypy
+    return cast(type[T], type(given))  # cast due to mypy
+
+
+def get_types(cls: type[T]) -> dict[str, Any]:
+    """Returns field names and inferred types for `given`.
+
+    See: [typing.get_type_hints](https://docs.python.org/3/library/typing.html#typing.get_type_hints)
+    """
+    hints = get_type_hints(cls)
+    for parent in reversed(cls.__mro__):
+        for name, value in getattr(cls, "__dict__", {}).items():
+            if name in hints or name.startswith("__"):
+                continue
+            if value is not None:
+                hints[name] = type(value)
+            else:
+                hints[name] = Any
+    return hints
 
 
 @casts_to(Any)
