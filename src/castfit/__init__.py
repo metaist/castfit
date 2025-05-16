@@ -33,7 +33,7 @@ if sys.version_info >= (3, 10):  # pragma: no cover
     from types import UnionType
 else:  # pragma: no cover
     NoneType = type(None)  # same as `types.NoneType`
-    UnionType = Union  # workaround
+    UnionType = type(Union[int, str])  # workaround
 
 # TODO 2026-10-31 @ py3.10 EOL: move imports above
 if sys.version_info >= (3, 11):  # pragma: no cover
@@ -111,7 +111,7 @@ T = TypeVar("T")
 Ignored = Optional[Any]
 """A function argument that is ignored."""
 
-GenericLiteral = type(Literal[Any])
+GenericLiteral = type(Literal[42])
 """Type of a generic `Literal`."""
 
 GenericUnion = (type(Union[str, int]), UnionType)
@@ -187,6 +187,7 @@ def get_types(item: type[T] | FunctionType | LambdaType) -> dict[str, Any]:
         return result
 
     # type
+    assert isinstance(item, type)  # for pyrefly
     for parent in reversed(item.__mro__):
         for name, value in getattr(parent, "__dict__", {}).items():
             if name in hints or name.startswith("__"):

@@ -26,8 +26,8 @@ def test_get_origin_type() -> None:
     class MyList(list[int]):
         pass
 
-    assert castfit.get_origin_type(MyList) == MyList
-    assert castfit.get_origin_type(MyList([1, 2, 3])) == MyList
+    assert castfit.get_origin_type(MyList) is MyList
+    assert castfit.get_origin_type(MyList([1, 2, 3])) is MyList
 
 
 def test_any() -> None:
