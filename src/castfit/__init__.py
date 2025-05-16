@@ -6,7 +6,6 @@
 
 # std
 from __future__ import annotations
-from collections.abc import Callable as Callable2
 from dataclasses import is_dataclass
 from datetime import datetime
 from inspect import signature
@@ -61,7 +60,7 @@ __all__ = [
     "castfit",
     "is_type",
     "to_type",
-    "is_subtype",
+    "DEFAULT_ENCODING",
     #
     # extensions
     "checks_type",
@@ -155,9 +154,10 @@ TYPE_CASTS: Casts = {}
 ### Utilities ###
 
 
-def setattrs(obj: T, **values: dict[str, Any]) -> T:
+def setattrs(obj: T, values: Union[dict[str, Any], None] = None, **extra: Any) -> T:
     """Like `setattr()` but for multiple values and returns the object."""
-    for name, val in values.items():
+    items = {**values, **extra} if values else extra
+    for name, val in items.items():
         setattr(obj, name, val)
     return obj
 
@@ -173,29 +173,27 @@ def get_origin_type(item: TypeForm[T] | T) -> type[T]:
     return cast(type[T], type(item))  # cast due to mypy
 
 
-def get_types(item: type[T] | FunctionType | LambdaType) -> dict[str, Any]:
+def get_types(item: type[T] | Callable[..., Any]) -> dict[str, Any]:
     """Returns names and inferred types for `item`.
 
     See: [typing.get_type_hints](https://docs.python.org/3/library/typing.html#typing.get_type_hints)
     """
     hints = get_type_hints(item)
-    if isinstance(item, GenericFunction):
+    if isinstance(item, type):
+        for parent in reversed(item.__mro__):
+            for name, value in getattr(parent, "__dict__", {}).items():
+                if name in hints or name.startswith("__"):
+                    continue
+                if value is not None:
+                    hints[name] = type(value)
+                else:
+                    hints[name] = Any
+    else:
         result = {}
         for param in signature(item).parameters.values():
             result[param.name] = hints.get(param.name, Any)
         result["return"] = hints.get("return", None)
         return result
-
-    # type
-    assert isinstance(item, type)  # for pyrefly
-    for parent in reversed(item.__mro__):
-        for name, value in getattr(parent, "__dict__", {}).items():
-            if name in hints or name.startswith("__"):
-                continue
-            if value is not None:
-                hints[name] = type(value)
-            else:
-                hints[name] = Any
     return hints
 
 
@@ -209,40 +207,6 @@ def is_type(value: Any, kind: TypeForm[T], checks: Checks | None = None) -> bool
     if checker := checks.get(origin):
         return checker(value, kind, checks)
     return isinstance(value, cast(type, kind))
-
-
-def is_subtype(t1: TypeForm[T], t2: TypeForm[K]) -> bool:
-    """Return `True` if `t1` is a subtype of `t1`, `False` otherwise.
-
-    Extends `issubclass` to `Any`, `Never`, `NoneType`, `Literal`, `Union`.
-    """
-    if t2 is Any:
-        return True
-    if t2 in (Never, NoReturn):
-        return False
-    if t2 is NoneType:
-        return t1 in (None, NoneType)
-
-    type1, type2 = type(t1), type(t2)
-    args1, args2 = get_args(t1), get_args(t2)
-
-    if type2 is GenericLiteral:
-        return type1 is GenericLiteral and set(args1).issubset(args2)
-    if type1 is GenericLiteral:
-        return all(is_type(arg, t2) for arg in args1)
-
-    if type2 in GenericUnion:
-        return t1 in args2 or type1 in GenericUnion and set(args1).issubset(args2)
-
-    if args1 or args2:  # generics
-        origin1, origin2 = get_origin(t1), get_origin(t2)
-        return (
-            len(args1) == len(args2)
-            and is_subtype(origin1, origin2)
-            and all(is_subtype(x, y) for x, y in zip(args1, args2))
-        )
-
-    return t1 is t2 or issubclass(t1, t2)
 
 
 def checks_type(*types: Any) -> Callable[[F], F]:
@@ -342,26 +306,6 @@ def is_tuple(value: Any, kind: TypeForm[T], checks: Checks | None = None) -> boo
     return len(value) == len(args) and all(
         is_type(v, vt, checks) for v, vt in zip(value, args)
     )
-
-
-@checks_type(Callable, Callable2)
-def is_callable(value: Any, kind: TypeForm[T], checks: Checks | None = None) -> bool:
-    """Return `True` if `value` matches the type signature of `kind`."""
-    if not callable(value):
-        return False
-    args = get_args(kind)
-    hints = get_types(cast(FunctionType, value))
-    return_type = hints.pop("return")
-    if not is_subtype(return_type, args[1]):
-        return False
-    if args[0] is Ellipsis:  # don't check args
-        return True
-    if len(args[0]) != len(hints):
-        return False
-    for (name, have), want in zip(hints.items(), args[0]):
-        if not is_subtype(have, want):
-            return False
-    return True
 
 
 ### Casting ###

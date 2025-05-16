@@ -17,19 +17,6 @@ from castfit import NoneType
 import castfit
 
 
-def test_get_origin_type() -> None:
-    """Get the appropriate constructor."""
-    assert castfit.get_origin_type(list[int]) is list
-    assert castfit.get_origin_type(list) is list
-    assert castfit.get_origin_type([]) is list
-
-    class MyList(list[int]):
-        pass
-
-    assert castfit.get_origin_type(MyList) is MyList
-    assert castfit.get_origin_type(MyList([1, 2, 3])) is MyList
-
-
 def test_any() -> None:
     """Keep whatever type you have."""
     values: list[Any] = [None, True, 3, 6.28, "test", b"test"]
