@@ -169,6 +169,16 @@ def test_spec_untyped() -> None:
     assert have.loc == Path("/")
 
 
+def test_spec_untyped_with_default() -> None:
+    """Keep default values if not present in the data."""
+
+    class Spec:
+        x = 5
+
+    have: Spec = castfit.castfit(Spec, {})
+    assert have.x == 5
+
+
 def test_spec_dataclass() -> None:
     """Cast data using a dataclass."""
 
