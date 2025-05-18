@@ -89,6 +89,11 @@ if sys.version_info >= (3, 10):
         assert castfit.to_type(42, str | float) == "42"
 
 
+def test_str_to_int() -> None:
+    """Convert `str` to `int`."""
+    assert castfit.to_type("2", int) == 2
+    assert castfit.to_type("2.5", int) == 2
+
 def test_empty() -> None:
     """Make empty containers."""
     assert castfit.to_type(list(), dict[str, int]) == dict()
