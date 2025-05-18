@@ -328,6 +328,15 @@ def to_union(
     raise TypeError(f"Cannot cast {value!r} to {kind}")
 
 
+@converts(str, int)
+def str_to_int(value: str) -> int:
+    """Cast `value` into an `int`."""
+    try:
+        return int(value)
+    except ValueError:
+        return int(float(value))
+
+
 @converts(Any, bytes)
 def to_bytes(
     value: Any,

@@ -94,6 +94,7 @@ def test_str_to_int() -> None:
     assert castfit.to_type("2", int) == 2
     assert castfit.to_type("2.5", int) == 2
 
+
 def test_empty() -> None:
     """Make empty containers."""
     assert castfit.to_type(list(), dict[str, int]) == dict()
