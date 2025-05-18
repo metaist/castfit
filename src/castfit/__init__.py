@@ -10,8 +10,6 @@ from dataclasses import is_dataclass
 from datetime import datetime
 from inspect import signature
 from types import BuiltinFunctionType
-from types import FunctionType
-from types import LambdaType
 from typing import Any
 from typing import Callable
 from typing import cast
@@ -25,6 +23,7 @@ from typing import TypeVar
 from typing import Union
 import sys
 
+# from typing import _SpecialForm
 
 # TODO 2025-10-31 @ py3.9 EOL: move imports above
 if sys.version_info >= (3, 10):  # pragma: no cover
@@ -47,12 +46,10 @@ __all__ = [
     # imported
     "Never",
     "NoneType",
+    "UnionType",
     #
     # types
-    "Ignored",
     "TypeForm",
-    "CheckFn",
-    "Checks",
     "CastFn",
     "Casts",
     #
@@ -63,31 +60,21 @@ __all__ = [
     "DEFAULT_ENCODING",
     #
     # extensions
-    "checks_type",
     "converts",
     #
     # lower-level API
     "get_origin_type",
     "setattrs",
-    "is_any",
     "to_any",
-    "is_never",
     "to_never",
-    "is_none",
     "to_none",
-    "is_literal",
     "to_literal",
-    "is_union",
     "to_union",
     "to_bytes",
     "to_str",
-    "is_list",
     "to_list",
-    "is_set",
     "to_set",
-    "is_dict",
     "to_dict",
-    "is_tuple",
     "to_tuple",
     "to_datetime",
 ]
@@ -110,36 +97,18 @@ T = TypeVar("T")
 Ignored = Optional[Any]
 """A function argument that is ignored."""
 
-GenericLiteral = type(Literal[42])
-"""Type of a generic `Literal`."""
-
-GenericUnion = (type(Union[str, int]), UnionType)
-"""Type of a generic `Union`."""
-
-GenericFunction = (BuiltinFunctionType, FunctionType, LambdaType)
-"""Type of function."""
-
 SPECIAL_FORMS = (Any, Never, NoReturn, NoneType, Literal, Union, UnionType)
 """Special forms."""
 
-# TypeForm = Union[type[T], type, type(Any), type(Union), UnionType, _SpecialForm]
+# TypeForm = Union[type[T], type(Any), type(Union), UnionType, _SpecialForm]
 TypeForm = Union[type[T], Any]
 """`Type` and special forms like `Any`, `Union`, etc."""
 # NOTE: We want `type[T] | _SpecialForm` but type checkers can't handle it.
 
-CheckFn = Callable[[Any, TypeForm[T], "Checks | None"], bool]
-"""Function signature that checks if a value is of a type."""
-
-Checks = dict[TypeForm[Any], CheckFn[Any]]
-"""Type of internal mapping of types to check functions."""
-
-TYPE_CHECKS: Checks = {}
-"""Mapping of types to check functions."""
-
 CastFnShort = Callable[[Any], Any]
 """Function signature for a simple caster."""
 
-CastFnLong = Callable[[Any, TypeForm[T], "Checks | None", "Casts | None"], T]
+CastFnLong = Callable[[Any, TypeForm[T], "Casts | None"], T]
 """Function signature for a full caster."""
 
 CastFn = Union[CastFnShort, CastFnLong[T]]
@@ -200,149 +169,75 @@ def get_types(item: type[T] | Callable[..., Any]) -> dict[str, Any]:
 ### Type Check ###
 
 
-def is_type(value: Any, kind: TypeForm[T], checks: Checks | None = None) -> bool:
+def is_type(value: Any, kind: TypeForm[T]) -> bool:
     """Return `True` if `value` is of a type compatible with `kind`."""
-    checks = checks or TYPE_CHECKS
+    if kind is Any:
+        return True
+    if kind in (Never, NoReturn):
+        return False
+    if kind in (None, NoneType):
+        return value is None
+
     origin = get_origin(kind) or kind
-    if checker := checks.get(origin):
-        return checker(value, kind, checks)
+    args = get_args(kind)
+    if origin is Literal:
+        return value in args
+    if origin in (Union, UnionType):
+        return any(is_type(value, vt) for vt in args)
+    # all special forms handled
+
+    if origin is not Any and not isinstance(value, origin):  # different containers
+        return False
+
+    if origin in (list, set, dict) and len(value) == 0:
+        return True  # empty mutable containers match
+
+    if origin in (list, set):
+        vt = args[0] if args else Any
+        return all(is_type(v, vt) for v in value)
+
+    if origin is dict:
+        kt, vt = args if args else (Any, Any)
+        return all(is_type(k, kt) and is_type(v, vt) for k, v in value.items())
+
+    if origin is tuple:
+        if len(args) == 0 or args == ((),):  # special empty-tuple format
+            return value is tuple()
+        if len(args) > 1 and args[1] == ...:
+            args = args[:1] * len(value)
+        return len(value) == len(args) and all(
+            is_type(v, vt) for v, vt in zip(value, args)
+        )
+
     return isinstance(value, cast(type, kind))
-
-
-def checks_type(*types: Any) -> Callable[[F], F]:
-    """Define a type-checker for one or more types."""
-
-    def _factory(func: F) -> F:
-        for t in types:
-            TYPE_CHECKS[t] = cast(CheckFn[Any], func)
-        return func
-
-    return _factory
-
-
-@checks_type(Any)
-def is_any(value: Any, kind: TypeForm[T] = Any, checks: Checks | None = None) -> bool:
-    """Always return `True`."""
-    return True
-
-
-@checks_type(Never, NoReturn)
-def is_never(
-    value: Any, kind: TypeForm[T] = Never, checks: Checks | None = None
-) -> bool:
-    """Always return `False`."""
-    return False
-
-
-@checks_type(NoneType)
-def is_none(
-    value: Any, kind: TypeForm[T] = NoneType, checks: Checks | None = None
-) -> bool:
-    """Return `True` if `value` is `None`."""
-    return value is None
-
-
-@checks_type(Literal)
-def is_literal(value: Any, kind: TypeForm[T], checks: Checks | None = None) -> bool:
-    """Return `True` if `value` is a valid `Literal`."""
-    return value in get_args(kind)
-
-
-@checks_type(Union, UnionType)
-def is_union(value: Any, kind: TypeForm[T], checks: Checks | None = None) -> bool:
-    """Return `True` if `value` is a valid `Union`."""
-    return any(is_type(value, val_type, checks) for val_type in get_args(kind))
-
-
-@checks_type(list)
-def is_list(value: Any, kind: TypeForm[T], checks: Checks | None = None) -> bool:
-    """Return `True` if `value` is a valid `list`."""
-    if not isinstance(value, list):
-        return False
-    if len(value) == 0:  # list() matches list[Any]
-        return True
-    args = get_args(kind)
-    val_type = args[0] if args else Any
-    return all(is_type(val, val_type, checks) for val in value)
-
-
-@checks_type(set)
-def is_set(value: Any, kind: TypeForm[T], checks: Checks | None = None) -> bool:
-    """Return `True` if `value` is a valid `set`."""
-    if not isinstance(value, set):
-        return False
-    if len(value) == 0:  # set() matches set[Any]
-        return True
-    args = get_args(kind)
-    val_type = args[0] if args else Any
-    return all(is_type(val, val_type, checks) for val in value)
-
-
-@checks_type(dict)
-def is_dict(value: Any, kind: TypeForm[T], checks: Checks | None = None) -> bool:
-    """Return `True` if `value` is a valid `dict`."""
-    if not isinstance(value, dict):
-        return False
-    if len(value) == 0:  # dict() matches dict[Any, Any]
-        return True
-    args = get_args(kind)
-    key_type, val_type = args if args else (Any, Any)
-    return all(
-        is_type(k, key_type, checks) and is_type(v, val_type, checks)
-        for k, v in value.items()
-    )
-
-
-@checks_type(tuple)
-def is_tuple(value: Any, kind: TypeForm[T], checks: Checks | None = None) -> bool:
-    """Return `True` if `value` is a valid `tuple`."""
-    args = get_args(kind)
-    if not isinstance(value, tuple):
-        return False
-    if len(args) == 0 or args == ((),):  # special empty-tuple format
-        return value == ()
-    if len(args) > 1 and args[1] == ...:
-        args = args[:1] * len(value)
-    return len(value) == len(args) and all(
-        is_type(v, vt, checks) for v, vt in zip(value, args)
-    )
 
 
 ### Casting ###
 
 
-def to_type(
-    value: Any,
-    kind: TypeForm[T],
-    checks: Checks | None = None,
-    casts: Casts | None = None,
-) -> T:
+def to_type(value: Any, kind: TypeForm[T], casts: Casts | None = None) -> T:
     """Try to cast `value` to the type of `kind`."""
-    checks = checks or TYPE_CHECKS
-    if is_type(value, kind, checks):  # already done
+    if is_type(value, kind):  # already done
         return cast(T, value)
 
     casts = casts or TYPE_CASTS
     src: type[T] = get_origin_type(value)
-    caster: Union[Callable[[Any], T], None] = get_converters(src, kind, checks, casts)
+    caster: Union[Callable[[Any], T], None] = get_converters(src, kind, casts)
     try:
         if caster:
             return caster(value)
-        return to_class(value, cast(type[T], kind), checks, casts)
+        return to_class(value, cast(type[T], kind), casts)
     except Exception as e:
         raise TypeError(f"Cannot cast {value!r} to {kind}") from e
 
 
 def get_converters(
-    src: TypeForm[T],
-    dest: TypeForm[K],
-    checks: Checks | None = None,
-    casts: Casts | None = None,
+    src: TypeForm[T], dest: TypeForm[K], casts: Casts | None = None
 ) -> Callable[[Any], T] | None:
     casts = casts or TYPE_CASTS
 
     def _wrap(
-        f: CastFn[Any], t: TypeForm[F], checks: Checks | None, casts: Casts | None
+        f: CastFn[Any], t: TypeForm[F], casts: Casts | None
     ) -> Callable[[Any], F]:
         if isinstance(f, BuiltinFunctionType):
             arity = 1
@@ -354,7 +249,7 @@ def get_converters(
                 f1 = cast(CastFnShort, f)
                 return cast(F, f1(v))
             f2 = cast(CastFnLong[F], f)
-            return f2(v, t, checks, casts)
+            return f2(v, t, casts)
 
         return _result
 
@@ -366,24 +261,23 @@ def get_converters(
         (Any, dest_origin),
     ]:
         if caster := casts.get((left, right)):
-            return _wrap(caster, dest, checks, casts)
+            return _wrap(caster, dest, casts)
 
     return None
 
 
-def set_converter(
-    src: TypeForm[T], dest: TypeForm[K], func: CastFn[Any]
-) -> CastFn[Any]:
+def set_converter(src: TypeForm[T], to: TypeForm[K], func: CastFn[Any]) -> CastFn[Any]:
     """Set the type-caster from `src` to `dest`"""
-    TYPE_CASTS[(src, dest)] = func
+    TYPE_CASTS[(src, to)] = func
     return func
 
 
-def converts(src: TypeForm[T], dest: TypeForm[K]) -> Callable[[F], F]:
+def converts(src: TypeForm[T], to: TypeForm[K]) -> Callable[[F], F]:
     """Define a type-caster from a `src` type to a `dest` type."""
 
     def _factory(func: F) -> F:
-        return cast(F, set_converter(src, dest, cast(CastFn[Any], func)))
+        set_converter(src, to, cast(CastFn[Any], func))
+        return func
 
     return _factory
 
@@ -411,11 +305,10 @@ def to_none(value: Ignored = None) -> None:
 def to_literal(
     value: T,
     kind: TypeForm[T],
-    checks: Checks | None = None,
     casts: Casts | None = None,
 ) -> T:
     """Return `value` if it is one of the `Literal` values."""
-    if is_literal(value, kind, checks):
+    if is_type(value, kind):
         return value
     raise TypeError(f"Cannot cast {value!r} to {kind}")
 
@@ -425,12 +318,11 @@ def to_literal(
 def to_union(
     value: Any,
     kind: TypeForm[T],
-    checks: Checks | None = None,
     casts: Casts | None = None,
 ) -> T:
     for arg in get_args(kind):
         try:
-            return cast(T, to_type(value, arg, checks, casts))
+            return cast(T, to_type(value, arg, casts))
         except (TypeError, ValueError):
             pass
     raise TypeError(f"Cannot cast {value!r} to {kind}")
@@ -440,7 +332,6 @@ def to_union(
 def to_bytes(
     value: Any,
     kind: type[bytes] = bytes,
-    checks: Checks | None = None,
     casts: Casts | None = None,
 ) -> bytes:
     """Cast `value` into `bytes`, encoding `str` with a default encoding if needed."""
@@ -454,7 +345,6 @@ def to_bytes(
 def to_str(
     value: Any,
     kind: type[str] = str,
-    checks: Checks | None = None,
     casts: Casts | None = None,
 ) -> str:
     """Cast `value` into `str`, decoding `bytes` with a default encoding if needed."""
@@ -468,35 +358,32 @@ def to_str(
 def to_list(
     value: Any,
     kind: type[list[T]] = list,
-    checks: Checks | None = None,
     casts: Casts | None = None,
 ) -> list[T]:
     """Cast `value` into `list`."""
     cls: type[list[T]] = get_origin_type(kind)
     args = get_args(kind)
     val_type = args[0] if args else Any
-    return cls(to_type(val, val_type, checks, casts) for val in value)
+    return cls(to_type(val, val_type, casts) for val in value)
 
 
 @converts(Any, set)
 def to_set(
     value: Any,
     kind: type[set[T]] = set,
-    checks: Checks | None = None,
     casts: Casts | None = None,
 ) -> set[T]:
     """Cast `value` into `set`."""
     cls: type[set[T]] = get_origin_type(kind)
     args = get_args(kind)
     val_type = args[0] if args else Any
-    return cls(to_type(val, val_type, checks, casts) for val in value)
+    return cls(to_type(val, val_type, casts) for val in value)
 
 
 @converts(Any, dict)
 def to_dict(
     value: Any,
     kind: type[dict[K, T]] = dict,
-    checks: Checks | None = None,
     casts: Casts | None = None,
 ) -> dict[K, T]:
     """Cast `value` into a `dict`."""
@@ -507,7 +394,7 @@ def to_dict(
     key_type, val_type = args if args else (Any, Any)
     return cls(
         {
-            to_type(k, key_type, checks, casts): to_type(v, val_type, checks, casts)
+            to_type(k, key_type, casts): to_type(v, val_type, casts)
             for k, v in value.items()
         }
     )
@@ -517,7 +404,6 @@ def to_dict(
 def to_tuple(
     value: Any,
     kind: type[tuple[Any, ...]] = tuple,
-    checks: Checks | None = None,
     casts: Casts | None = None,
 ) -> tuple[Any, ...]:
     """Cast `value` into a `tuple`."""
@@ -529,9 +415,7 @@ def to_tuple(
         args = args[:1] * len(value)
     if len(value) != len(args):
         raise ValueError(f"Different lengths when casting {value!r} to {kind}")
-    return cls(
-        to_type(val, val_type, checks, casts) for val, val_type in zip(value, args)
-    )
+    return cls(to_type(val, val_type, casts) for val, val_type in zip(value, args))
 
 
 set_converter(float, datetime, datetime.fromtimestamp)
@@ -545,16 +429,15 @@ def to_datetime(value: Any) -> datetime:
     if isinstance(value, datetime):
         return value
     if isinstance(value, (list, tuple)):  # try to unpack values
-        return datetime(*value)
+        return datetime(*value)  # type: ignore
     if isinstance(value, dict):
-        return datetime(**value)
+        return datetime(**value)  # type: ignore
     raise ValueError(f"Cannot cast {value!r} into datetime")
 
 
 def to_class(
     value: Any,
     kind: type[T],
-    checks: Checks | None = None,
     casts: Casts | None = None,
 ) -> T:
     """Cast `value` to an instance of `kind`."""
@@ -562,7 +445,7 @@ def to_class(
     if isinstance(value, dict):
         hints = get_types(cls)
         data: dict[str, Any] = {
-            name: to_type(value.get(name, hint), hint, checks, casts)
+            name: to_type(value.get(name, hint), hint, casts)
             for name, hint in hints.items()
         }
         if is_dataclass(cls):
@@ -578,8 +461,7 @@ def castfit(
     spec: type[T],
     data: dict[str, Any],
     *,
-    checks: Checks | None = None,
     casts: Casts | None = None,
 ) -> T:
     """Construct a `spec` using `data` that has been cast appropriately."""
-    return to_class(data, spec, checks, casts)
+    return to_class(data, spec, casts)

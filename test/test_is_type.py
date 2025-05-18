@@ -73,7 +73,7 @@ if sys.version_info >= (3, 10):
 
     def test_union_type() -> None:
         """Any of a `UnionType` args can match."""
-        assert castfit.is_type(42, int | None)
+        assert castfit.is_type(42, int | str)
 
 
 def test_empty() -> None:

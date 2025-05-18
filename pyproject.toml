@@ -65,6 +65,9 @@ classifiers = [
 exclude_lines = ["pragma: no cover", "@overload"]
 exclude_also = ["no cover: start(?s:.)*?no cover: stop"]
 
+[tool.mypy]
+disable_error_code = "unused-ignore"
+
 [tool.pyright]
 exclude = ["**/_vendor/**"]
 
@@ -86,6 +89,9 @@ mypy = """
     --exclude '/_vendor/' \
     src test
 """
+ty = "uvx ty check"
+pyrefly = "uvx pyrefly check"
+
 
 # Test
 test.help = "run unit tests"
