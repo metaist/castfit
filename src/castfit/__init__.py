@@ -8,6 +8,7 @@
 from __future__ import annotations
 from dataclasses import is_dataclass
 from datetime import datetime
+from datetime import timezone
 from inspect import signature
 from types import BuiltinFunctionType
 from typing import Any
@@ -427,9 +428,14 @@ def to_tuple(
     return cls(to_type(val, val_type, casts) for val, val_type in zip(value, args))
 
 
-set_converter(float, datetime, datetime.fromtimestamp)
-set_converter(int, datetime, datetime.fromtimestamp)
 set_converter(str, datetime, datetime.fromisoformat)
+
+
+@converts(float, datetime)
+@converts(int, datetime)
+def float_to_datetime(value: float) -> datetime:
+    """Cast `value` into a `datetime`."""
+    return datetime.fromtimestamp(value, timezone.utc)
 
 
 @converts(Any, datetime)
