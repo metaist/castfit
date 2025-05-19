@@ -6,9 +6,11 @@
 
 # std
 from __future__ import annotations
+from dataclasses import dataclass
 from dataclasses import is_dataclass
 from datetime import datetime
 from datetime import timezone
+from inspect import Parameter
 from inspect import signature
 from types import BuiltinFunctionType
 from typing import Any
@@ -17,9 +19,14 @@ from typing import cast
 from typing import get_args
 from typing import get_origin
 from typing import get_type_hints
+from typing import Iterable
+from typing import Iterator
 from typing import Literal
+from typing import Mapping
 from typing import NoReturn
 from typing import Optional
+from typing import overload
+from typing import Sized
 from typing import TypeVar
 from typing import Union
 import sys
@@ -54,30 +61,18 @@ __all__ = [
     "CastFn",
     "Casts",
     #
+    # utilities
+    "iterate",
+    "setattrs",
+    "get_origin_type",
+    "Typed",
+    "get_types",
+    #
     # top-level API
-    "castfit",
     "is_type",
     "to_type",
-    "DEFAULT_ENCODING",
-    #
-    # extensions
-    "converts",
-    #
-    # lower-level API
-    "get_origin_type",
-    "setattrs",
-    "to_any",
-    "to_never",
-    "to_none",
-    "to_literal",
-    "to_union",
-    "to_bytes",
-    "to_str",
-    "to_list",
-    "to_set",
-    "to_dict",
-    "to_tuple",
-    "to_datetime",
+    "casts",
+    "castfit",
 ]
 
 __version__ = "0.1.1"
@@ -86,7 +81,7 @@ __pubdate__ = "2025-04-28T14:32:37Z"
 DEFAULT_ENCODING = "utf-8"
 """Default file encoding."""
 
-F = TypeVar("F")
+F = TypeVar("F", bound=Callable[..., Any])
 """Type variable for functions."""
 
 K = TypeVar("K")
@@ -124,6 +119,40 @@ TYPE_CASTS: Casts = {}
 ### Utilities ###
 
 
+def iterate(*items: T | Iterable[T]) -> Iterator[T]:
+    """Return an iterator over individual or collections of items.
+
+    NOTE: Although `str` is `Iterable`, we treat it as an individual item.
+
+    Args:
+        *items (T | Iterable[T]): one or more items to be iterated.
+
+    Yields:
+        T: an individual item
+
+    Examples:
+
+    Strings are treated like individual items.
+    >>> list(iterate("hello")) == ["hello"]
+    True
+
+    Iterate over lists or individual items:
+    >>> list(iterate([1, 2], 3)) == [1, 2, 3]
+    True
+
+    You can iterate over multiple lists:
+    >>> list(iterate([3, 4], [5, 6])) == [3, 4, 5, 6]
+    True
+    """
+    for item in items:
+        if isinstance(item, str):
+            yield cast(T, item)
+        elif isinstance(item, Iterable):
+            yield from item
+        else:
+            yield item
+
+
 def setattrs(obj: T, values: Union[dict[str, Any], None] = None, **extra: Any) -> T:
     """Like `setattr()` but for multiple values and returns the object."""
     items = {**values, **extra} if values else extra
@@ -143,28 +172,54 @@ def get_origin_type(item: TypeForm[T] | T) -> type[T]:
     return cast(type[T], type(item))  # cast due to mypy
 
 
-def get_types(item: type[T] | Callable[..., Any]) -> dict[str, Any]:
+@dataclass
+class Typed:
+    """A typed value with a name and possible default."""
+
+    name: str
+    """Name of the field or parameter."""
+
+    kind: TypeForm[Any] = Any
+    """Type hint or inferred type."""
+
+    default: Any = Parameter.empty
+    """Default value."""
+
+
+def get_types(item: type[T] | Callable[..., Any]) -> dict[str, Typed]:
     """Returns names and inferred types for `item`.
+
+    Args:
+        item (type[T] | Callable[..., Any]): a class, lambda, or function.
+
+    Returns:
+        dict[str, Typed]: mapping of field/parameter names to an object that
+            contains the name, type, and default value (if any).
 
     See: [typing.get_type_hints](https://docs.python.org/3/library/typing.html#typing.get_type_hints)
     """
+    result = {}
     hints = get_type_hints(item)
     if isinstance(item, type):
         for parent in reversed(item.__mro__):
             for name, value in getattr(parent, "__dict__", {}).items():
-                if name in hints or name.startswith("__"):
+                if name in result or name.startswith("__"):
                     continue
-                if value is not None:
-                    hints[name] = type(value)
-                else:
-                    hints[name] = Any
+
+                kind = hints.get(name, Any if value is None else type(value))
+                result[name] = Typed(name, kind, value)
+
+        # get all the typed-without-default values
+        for name, kind in hints.items():
+            if name not in result:
+                result[name] = Typed(name, kind)
     else:
-        result = {}
         for param in signature(item).parameters.values():
-            result[param.name] = hints.get(param.name, Any)
-        result["return"] = hints.get("return", None)
-        return result
-    return hints
+            result[param.name] = Typed(
+                param.name, hints.get(param.name, Any), param.default
+            )
+        result["return"] = Typed("return", hints.get("return", Any))
+    return result
 
 
 ### Type Check ###
@@ -187,23 +242,25 @@ def is_type(value: Any, kind: TypeForm[T]) -> bool:
         return any(is_type(value, vt) for vt in args)
     # all special forms handled
 
-    if origin is not Any and not isinstance(value, origin):  # different containers
-        return False
+    if not isinstance(value, cast(type, origin)):
+        return False  # different containers
 
+    assert isinstance(value, Sized)
     if origin in (list, set, dict) and len(value) == 0:
         return True  # empty mutable containers match
 
+    assert isinstance(value, Iterable)
     if origin in (list, set):
         vt = args[0] if args else Any
         return all(is_type(v, vt) for v in value)
 
-    if origin is dict:
+    if origin is dict and isinstance(value, Mapping):
         kt, vt = args if args else (Any, Any)
         return all(is_type(k, kt) and is_type(v, vt) for k, v in value.items())
 
     if origin is tuple:
         if len(args) == 0 or args == ((),):  # special empty-tuple format
-            return value is tuple()
+            return isinstance(value, tuple) and len(value) == 0
         if len(args) > 1 and args[1] == ...:
             args = args[:1] * len(value)
         return len(value) == len(args) and all(

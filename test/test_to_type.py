@@ -23,7 +23,7 @@ def test_any() -> None:
     values: list[Any] = [None, True, 3, 6.28, "test", b"test"]
     for val in values:
         assert castfit.to_type(val, Any) == val
-        assert castfit.to_any(val) == val  # since `to_type` doesn't try the cast
+        assert castfit._to_any(val) == val  # since `to_type` doesn't try the cast
 
 
 def test_never() -> None:
@@ -51,7 +51,7 @@ def test_basic() -> None:
 
     # special cases
     assert castfit.to_type([65], bytes) == b"A"
-    assert castfit.to_str("A") == "A"
+    assert castfit._to_str("A") == "A"
 
     with raises(TypeError):
         castfit.to_type("break", int)
@@ -64,11 +64,11 @@ def test_custom() -> None:
 
 def test_literal() -> None:
     """`Literal` requires one of its values."""
-    assert castfit.to_literal("r", Literal["r", "rw"]) == "r"
-    assert castfit.to_literal(2, Literal[1, 2, 3]) == 2
+    assert castfit._to_literal("r", Literal["r", "rw"]) == "r"
+    assert castfit._to_literal(2, Literal[1, 2, 3]) == 2
 
     with raises(TypeError):
-        castfit.to_literal(5, Literal[1, 2, 3])
+        castfit._to_literal(5, Literal[1, 2, 3])
 
 
 def test_union() -> None:
@@ -126,7 +126,7 @@ def test_containers() -> None:
 def test_datetime() -> None:
     """Cast to `datetime`."""
     dt = datetime(2023, 12, 12, 12)
-    assert castfit.to_datetime(dt) == dt  # direct to avoid check
+    assert castfit._to_datetime(dt) == dt  # direct to avoid check
     assert castfit.to_type([2023, 12, 12, 12], datetime) == dt
     assert castfit.to_type((2023, 12, 12, 12), datetime) == dt
     assert castfit.to_type("2023-12-12T12:00:00", datetime) == dt
@@ -169,6 +169,16 @@ def test_spec_untyped() -> None:
     assert have.loc == Path("/")
 
 
+def test_spec_optional() -> None:
+    """Set value for `Optional` values."""
+
+    class Spec:
+        x: Optional[int]
+
+    have: Spec = castfit.castfit(Spec, {})
+    assert have.x is None
+
+
 def test_spec_untyped_with_default() -> None:
     """Keep default values if not present in the data."""
 
@@ -192,6 +202,22 @@ def test_spec_dataclass() -> None:
     assert have.name == "777"
     assert have.age == 21
     assert have.loc == Path("/")
+
+
+def test_spec_dataclass_too_many() -> None:
+    """Ignore extra parameters."""
+
+    @dataclass
+    class Spec:
+        name: str
+        age: int
+        loc: Path
+
+    have: Spec = castfit.castfit(Spec, dict(name=777, age="21", loc="/", foo="bar"))
+    assert have.name == "777"
+    assert have.age == 21
+    assert have.loc == Path("/")
+    assert getattr(have, "foo", None) is None
 
 
 def test_nested_class() -> None:

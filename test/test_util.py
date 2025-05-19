@@ -1,8 +1,11 @@
 # std
+from __future__ import annotations
 from typing import Any
+from typing import Union
 
 # pkg
 import castfit
+from castfit import Typed
 
 
 class Point:
@@ -44,22 +47,31 @@ def test_get_origin_type() -> None:
 def test_get_types() -> None:
     """Get type hints."""
     # lambda produces an unknown return type
-    assert castfit.get_types(lambda x: x) == {"x": Any, "return": None}
+    assert castfit.get_types(lambda x: x) == {
+        "x": Typed("x"),
+        "return": Typed("return", Any),
+    }
 
-    def _x(x: int) -> bool:
+    def _x(x: int, y: str = "works") -> bool:
         return bool(x)
 
-    assert castfit.get_types(_x) == {"x": int, "return": bool}
+    assert castfit.get_types(_x) == {
+        "x": Typed("x", int),
+        "y": Typed("y", str, "works"),
+        "return": Typed("return", bool),
+    }
 
     class X:
         typed: int
+        typed_none: Union[int, None] = None
+        typed_default: bool = True
         untyped = None
         untyped_default = 5
-        typed_default: bool = True
 
     assert castfit.get_types(X) == {
-        "typed": int,
-        "untyped": Any,
-        "untyped_default": int,
-        "typed_default": bool,
+        "typed": Typed("typed", int),
+        "typed_none": Typed("typed_none", Union[int, None], None),
+        "typed_default": Typed("typed_default", bool, True),
+        "untyped": Typed("untyped", Any, None),
+        "untyped_default": Typed("untyped_default", int, 5),
     }
