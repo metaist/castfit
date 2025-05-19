@@ -352,7 +352,10 @@ def casts(
 
 def casts(*args: Any, **kwargs: Any) -> Any:
     if (
-        len(args) == 1 and isinstance(args[0], FunctionType) and not kwargs
+        len(args) == 1
+        and isinstance(args[0], Callable)
+        and not isinstance(args[0], type)
+        and not kwargs
     ):  # zero-arg decorator
         func = cast(CastFn[Any], args[0])
         hints = get_types(func)
