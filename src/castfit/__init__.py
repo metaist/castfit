@@ -13,7 +13,6 @@ from datetime import timezone
 from inspect import Parameter
 from inspect import signature
 from types import BuiltinFunctionType
-from types import FunctionType
 from typing import Any
 from typing import Callable
 from typing import cast
@@ -105,7 +104,7 @@ TypeForm = Union[type[T], Any]
 CastFnShort = Callable[[Any], Any]
 """Function signature for a simple caster."""
 
-CastFnLong = Callable[[Any, TypeForm[T], "Casts | None"], T]
+CastFnLong = Callable[[Any, TypeForm[T], Optional["Casts"]], T]
 """Function signature for a full caster."""
 
 CastFn = Union[CastFnShort, CastFnLong[T]]
@@ -274,7 +273,7 @@ def is_type(value: Any, kind: TypeForm[T]) -> bool:
 ### Casting ###
 
 
-def to_type(value: Any, kind: TypeForm[T], casts: Casts | None = None) -> T:
+def to_type(value: Any, kind: TypeForm[T], casts: Optional[Casts] = None) -> T:
     """Try to cast `value` to the type of `kind`."""
     if is_type(value, kind):  # already done
         return cast(T, value)
@@ -291,12 +290,12 @@ def to_type(value: Any, kind: TypeForm[T], casts: Casts | None = None) -> T:
 
 
 def _get_casters(
-    src: TypeForm[T], dest: TypeForm[K], casts: Casts | None = None
+    src: TypeForm[T], dest: TypeForm[K], casts: Optional[Casts] = None
 ) -> Callable[[Any], K] | None:
     casts = casts or TYPE_CASTS
 
     def _wrap(
-        f: CastFn[Any], t: TypeForm[K], casts: Casts | None
+        f: CastFn[Any], t: TypeForm[K], casts: Optional[Casts]
     ) -> Callable[[Any], K]:
         if isinstance(f, BuiltinFunctionType):
             arity = 1
@@ -353,7 +352,7 @@ def casts(
 def casts(*args: Any, **kwargs: Any) -> Any:
     if (
         len(args) == 1
-        and isinstance(args[0], Callable)
+        and callable(args[0])
         and not isinstance(args[0], type)
         and not kwargs
     ):  # zero-arg decorator
@@ -412,7 +411,7 @@ def _to_none(value: Ignored = None) -> None:
 def _to_literal(
     value: T,
     kind: TypeForm[T],
-    casts: Casts | None = None,
+    casts: Optional[Casts] = None,
 ) -> T:
     """Return `value` if it is one of the `Literal` values."""
     if is_type(value, kind):
@@ -424,7 +423,7 @@ def _to_literal(
 def _to_union(
     value: Any,
     kind: TypeForm[T],
-    casts: Casts | None = None,
+    casts: Optional[Casts] = None,
 ) -> T:
     for arg in get_args(kind):
         try:
@@ -447,7 +446,7 @@ def _str_to_int(value: str) -> int:
 def _to_bytes(
     value: Any,
     kind: type[bytes] = bytes,
-    casts: Casts | None = None,
+    casts: Union[Casts, None] = None,
 ) -> bytes:
     """Cast `value` into `bytes`, encoding `str` with a default encoding if needed."""
     if isinstance(value, str):
@@ -460,7 +459,7 @@ def _to_bytes(
 def _to_str(
     value: Any,
     kind: type[str] = str,
-    casts: Casts | None = None,
+    casts: Optional[Casts] = None,
 ) -> str:
     """Cast `value` into `str`, decoding `bytes` with a default encoding if needed."""
     if isinstance(value, bytes):
@@ -473,7 +472,7 @@ def _to_str(
 def _to_list(
     value: Any,
     kind: type[list[T]] = list,
-    casts: Casts | None = None,
+    casts: Optional[Casts] = None,
 ) -> list[T]:
     """Cast `value` into `list`."""
     cls: type[list[T]] = get_origin_type(kind)
@@ -486,7 +485,7 @@ def _to_list(
 def _to_set(
     value: Any,
     kind: type[set[T]] = set,
-    casts: Casts | None = None,
+    casts: Optional[Casts] = None,
 ) -> set[T]:
     """Cast `value` into `set`."""
     cls: type[set[T]] = get_origin_type(kind)
@@ -499,7 +498,7 @@ def _to_set(
 def _to_dict(
     value: Any,
     kind: type[dict[K, T]] = dict,
-    casts: Casts | None = None,
+    casts: Optional[Casts] = None,
 ) -> dict[K, T]:
     """Cast `value` into a `dict`."""
     cls: type[dict[K, T]] = get_origin_type(kind)
@@ -519,7 +518,7 @@ def _to_dict(
 def _to_tuple(
     value: Any,
     kind: type[tuple[Any, ...]] = tuple,
-    casts: Casts | None = None,
+    casts: Optional[Casts] = None,
 ) -> tuple[Any, ...]:
     """Cast `value` into a `tuple`."""
     cls: type[tuple[Any, ...]] = get_origin_type(kind)
@@ -558,7 +557,7 @@ def _to_datetime(value: Any) -> datetime:
 def _to_class(
     value: Any,
     kind: type[T],
-    casts: Casts | None = None,
+    casts: Optional[Casts] = None,
 ) -> T:
     """Cast `value` to an instance of `kind`."""
     cls: type[T] = get_origin_type(kind)
@@ -581,7 +580,7 @@ def castfit(
     spec: type[T],
     data: dict[str, Any],
     *,
-    casts: Casts | None = None,
+    casts: Optional[Casts] = None,
 ) -> T:
     """Construct a `spec` using `data` that has been cast appropriately."""
     return _to_class(data, spec, casts)
