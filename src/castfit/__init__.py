@@ -223,33 +223,33 @@ def to_type(value: Any, kind: TypeForm[T], casts: Casts | None = None) -> T:
 
     casts = casts or TYPE_CASTS
     src: type[T] = get_origin_type(value)
-    caster: Union[Callable[[Any], T], None] = get_converters(src, kind, casts)
+    fn: Union[Callable[[Any], T], None] = _get_casters(src, kind, casts)
     try:
-        if caster:
-            return caster(value)
-        return to_class(value, cast(type[T], kind), casts)
+        if fn:
+            return fn(value)
+        return _to_class(value, cast(type[T], kind), casts)
     except Exception as e:
         raise TypeError(f"Cannot cast {value!r} to {kind}") from e
 
 
-def get_converters(
+def _get_casters(
     src: TypeForm[T], dest: TypeForm[K], casts: Casts | None = None
-) -> Callable[[Any], T] | None:
+) -> Callable[[Any], K] | None:
     casts = casts or TYPE_CASTS
 
     def _wrap(
-        f: CastFn[Any], t: TypeForm[F], casts: Casts | None
-    ) -> Callable[[Any], F]:
+        f: CastFn[Any], t: TypeForm[K], casts: Casts | None
+    ) -> Callable[[Any], K]:
         if isinstance(f, BuiltinFunctionType):
             arity = 1
         else:
             arity = len(signature(f).parameters)
 
-        def _result(v: Any) -> F:
+        def _result(v: Any) -> K:
             if arity == 1:  # f is short-form
                 f1 = cast(CastFnShort, f)
-                return cast(F, f1(v))
-            f2 = cast(CastFnLong[F], f)
+                return cast(K, f1(v))
+            f2 = cast(CastFnLong[K], f)
             return f2(v, t, casts)
 
         return _result
@@ -267,43 +267,85 @@ def get_converters(
     return None
 
 
-def set_converter(src: TypeForm[T], to: TypeForm[K], func: CastFn[Any]) -> CastFn[Any]:
-    """Set the type-caster from `src` to `dest`"""
-    TYPE_CASTS[(src, to)] = func
-    return func
+### Extensions ###
 
 
-def converts(src: TypeForm[T], to: TypeForm[K]) -> Callable[[F], F]:
-    """Define a type-caster from a `src` type to a `dest` type."""
+@overload  # base case, functional invocation
+def casts(
+    src: TypeForm[T] | Iterable[TypeForm[T]],
+    to: TypeForm[T] | Iterable[TypeForm[T]],
+    func: CastFn[Any],
+) -> CastFn[Any]: ...
+
+
+@overload  # zero-arg decorator
+def casts(f: F) -> F: ...
+
+
+@overload  # from `Any` to one or more types
+def casts(*, to: TypeForm[T] | Iterable[TypeForm[T]]) -> Callable[[F], F]: ...
+
+
+@overload  # from one or more types to one or more types
+def casts(
+    src: TypeForm[T] | Iterable[TypeForm[T]], *, to: TypeForm[T] | Iterable[TypeForm[T]]
+) -> Callable[[F], F]: ...
+
+
+def casts(*args: Any, **kwargs: Any) -> Any:
+    if len(args) == 1 and callable(args[0]) and not kwargs:  # zero-arg decorator
+        func = cast(CastFn[Any], args[0])
+        hints = get_types(func)
+        assert len(hints) > 0
+        src: TypeForm[Any] = get_origin_type(list(hints.values())[0].kind)
+        to: TypeForm[Any] = get_origin_type(hints["return"].kind)
+        return casts(src, to, func)
+
+    if len(args) >= 1:
+        kwargs["src"] = args[0]
+    if len(args) >= 2:
+        kwargs["to"] = args[1]
+    if len(args) == 3:
+        kwargs["func"] = args[2]
+    if len(args) > 3:
+        raise TypeError("Too many arguments.")
+
+    src = kwargs.get("src", Any)
+    if "to" in kwargs:
+        to = kwargs["to"]
+    else:
+        raise TypeError("`cast` missing `to` parameter.")
 
     def _factory(func: F) -> F:
-        set_converter(src, to, cast(CastFn[Any], func))
+        for src_type in iterate(src):
+            for to_type in iterate(to):
+                TYPE_CASTS[(src_type, to_type)] = cast(CastFn[Any], func)
         return func
 
-    return _factory
+    f = kwargs.get("func")
+    return _factory(f) if f else _factory
 
 
-@converts(Any, Any)
-def to_any(value: T) -> T:
+@casts(to=Any)
+def _to_any(value: T) -> T:
     """Always return `value`."""
     return value
 
 
-@converts(Any, Never)
-@converts(Any, NoReturn)
-def to_never(value: Any) -> NoReturn:
+@casts(to=(Never, NoReturn))
+def _to_never(value: Any) -> NoReturn:
     """Always raise a `TypeError`."""
     raise TypeError(f"Cannot cast {value!r} to Never (nothing can)")
 
 
-@converts(Any, NoneType)
-def to_none(value: Ignored = None) -> None:
+@casts(to=NoneType)
+def _to_none(value: Ignored = None) -> None:
     """Always return `None`."""
     return None
 
 
-@converts(Any, Literal)
-def to_literal(
+@casts(to=Literal)
+def _to_literal(
     value: T,
     kind: TypeForm[T],
     casts: Casts | None = None,
@@ -314,9 +356,8 @@ def to_literal(
     raise TypeError(f"Cannot cast {value!r} to {kind}")
 
 
-@converts(Any, Union)
-@converts(Any, UnionType)
-def to_union(
+@casts(to=(Union, UnionType))
+def _to_union(
     value: Any,
     kind: TypeForm[T],
     casts: Casts | None = None,
@@ -329,8 +370,8 @@ def to_union(
     raise TypeError(f"Cannot cast {value!r} to {kind}")
 
 
-@converts(str, int)
-def str_to_int(value: str) -> int:
+@casts
+def _str_to_int(value: str) -> int:
     """Cast `value` into an `int`."""
     try:
         return int(value)
@@ -338,8 +379,8 @@ def str_to_int(value: str) -> int:
         return int(float(value))
 
 
-@converts(Any, bytes)
-def to_bytes(
+@casts
+def _to_bytes(
     value: Any,
     kind: type[bytes] = bytes,
     casts: Casts | None = None,
@@ -351,8 +392,8 @@ def to_bytes(
     return cls(value)
 
 
-@converts(Any, str)
-def to_str(
+@casts
+def _to_str(
     value: Any,
     kind: type[str] = str,
     casts: Casts | None = None,
@@ -364,8 +405,8 @@ def to_str(
     return cls(value)
 
 
-@converts(Any, list)
-def to_list(
+@casts
+def _to_list(
     value: Any,
     kind: type[list[T]] = list,
     casts: Casts | None = None,
@@ -377,8 +418,8 @@ def to_list(
     return cls(to_type(val, val_type, casts) for val in value)
 
 
-@converts(Any, set)
-def to_set(
+@casts
+def _to_set(
     value: Any,
     kind: type[set[T]] = set,
     casts: Casts | None = None,
@@ -390,8 +431,8 @@ def to_set(
     return cls(to_type(val, val_type, casts) for val in value)
 
 
-@converts(Any, dict)
-def to_dict(
+@casts
+def _to_dict(
     value: Any,
     kind: type[dict[K, T]] = dict,
     casts: Casts | None = None,
@@ -410,8 +451,8 @@ def to_dict(
     )
 
 
-@converts(Any, tuple)
-def to_tuple(
+@casts
+def _to_tuple(
     value: Any,
     kind: type[tuple[Any, ...]] = tuple,
     casts: Casts | None = None,
@@ -428,18 +469,17 @@ def to_tuple(
     return cls(to_type(val, val_type, casts) for val, val_type in zip(value, args))
 
 
-set_converter(str, datetime, datetime.fromisoformat)
+casts(str, datetime, datetime.fromisoformat)
 
 
-@converts(float, datetime)
-@converts(int, datetime)
-def float_to_datetime(value: float) -> datetime:
+@casts((int, float), to=datetime)
+def _float_to_datetime(value: float) -> datetime:
     """Cast `value` into a `datetime`."""
     return datetime.fromtimestamp(value, timezone.utc)
 
 
-@converts(Any, datetime)
-def to_datetime(value: Any) -> datetime:
+@casts
+def _to_datetime(value: Any) -> datetime:
     """Cast `value` into a `datetime`."""
     if isinstance(value, datetime):
         return value
@@ -450,7 +490,8 @@ def to_datetime(value: Any) -> datetime:
     raise ValueError(f"Cannot cast {value!r} into datetime")
 
 
-def to_class(
+# NOTE: We do not register this fallback function.
+def _to_class(
     value: Any,
     kind: type[T],
     casts: Casts | None = None,
@@ -460,7 +501,7 @@ def to_class(
     if isinstance(value, dict):
         hints = get_types(cls)
         data: dict[str, Any] = {
-            name: to_type(value.get(name, hint), hint, casts)
+            name: to_type(value.get(name, hint.default), hint.kind, casts)
             for name, hint in hints.items()
         }
         if is_dataclass(cls):
@@ -479,4 +520,4 @@ def castfit(
     casts: Casts | None = None,
 ) -> T:
     """Construct a `spec` using `data` that has been cast appropriately."""
-    return to_class(data, spec, casts)
+    return _to_class(data, spec, casts)
