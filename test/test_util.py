@@ -21,12 +21,12 @@ def test_setattrs() -> None:
     assert obj.y is True
 
     obj = Point()
-    castfit.setattrs(obj, dict(x=1, y=True))
+    castfit.setattrs(obj, {"x": 1, "y": True})
     assert obj.x == 1
     assert obj.y is True
 
     obj = Point()
-    castfit.setattrs(obj, dict(x=1), y=True)
+    castfit.setattrs(obj, {"x": 1}, y=True)
     assert obj.x == 1
     assert obj.y is True
 

@@ -130,7 +130,10 @@ def test_datetime() -> None:
     assert castfit.to_type([2023, 12, 12, 12], datetime) == dt
     assert castfit.to_type((2023, 12, 12, 12), datetime) == dt
     assert castfit.to_type("2023-12-12T12:00:00", datetime) == dt
-    assert castfit.to_type(dict(year=2023, month=12, day=12, hour=12), datetime) == dt
+    assert (
+        castfit.to_type({"year": 2023, "month": 12, "day": 12, "hour": 12}, datetime)
+        == dt
+    )
     assert castfit.to_type(1745865691.213537, datetime) == datetime(
         2025, 4, 28, 18, 41, 31, 213537, timezone.utc
     )
@@ -149,7 +152,7 @@ def test_castfit_class() -> None:
         age: int
         loc: Path
 
-    have: Spec = castfit.castfit(Spec, dict(name="Bob", age="21", loc="/"))
+    have: Spec = castfit.castfit(Spec, {"name": "Bob", "age": "21", "loc": "/"})
     assert have.name == "Bob"
     assert have.age == 21
     assert have.loc == Path("/")
@@ -163,7 +166,7 @@ def test_spec_untyped() -> None:
         age = 0  # typed as `int`
         loc: Path
 
-    have: Spec = castfit.castfit(Spec, dict(name="Bob", age="21", loc="/"))
+    have: Spec = castfit.castfit(Spec, {"name": "Bob", "age": "21", "loc": "/"})
     assert have.name == "Bob"
     assert have.age == 21
     assert have.loc == Path("/")
@@ -198,7 +201,7 @@ def test_spec_dataclass() -> None:
         age: int
         loc: Path
 
-    have: Spec = castfit.castfit(Spec, dict(name=777, age="21", loc="/"))
+    have: Spec = castfit.castfit(Spec, {"name": 777, "age": "21", "loc": "/"})
     assert have.name == "777"
     assert have.age == 21
     assert have.loc == Path("/")
@@ -213,7 +216,9 @@ def test_spec_dataclass_too_many() -> None:
         age: int
         loc: Path
 
-    have: Spec = castfit.castfit(Spec, dict(name=777, age="21", loc="/", foo="bar"))
+    have: Spec = castfit.castfit(
+        Spec, {"name": 777, "age": "21", "loc": "/", "foo": "bar"}
+    )
     assert have.name == "777"
     assert have.age == 21
     assert have.loc == Path("/")
