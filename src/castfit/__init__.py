@@ -13,6 +13,7 @@ from datetime import timezone
 from inspect import Parameter
 from inspect import signature
 from types import BuiltinFunctionType
+from types import FunctionType
 from typing import Any
 from typing import Callable
 from typing import cast
@@ -245,27 +246,27 @@ def is_type(value: Any, kind: TypeForm[T]) -> bool:
     if not isinstance(value, cast(type, origin)):
         return False  # different containers
 
-    assert isinstance(value, Sized)
-    if origin in (list, set, dict) and len(value) == 0:
-        return True  # empty mutable containers match
+    if isinstance(value, Sized):
+        if origin in (list, set, dict) and len(value) == 0:
+            return True  # empty mutable containers match
 
-    assert isinstance(value, Iterable)
-    if origin in (list, set):
-        vt = args[0] if args else Any
-        return all(is_type(v, vt) for v in value)
+        assert isinstance(value, Iterable)
+        if origin in (list, set):
+            vt = args[0] if args else Any
+            return all(is_type(v, vt) for v in value)
 
-    if origin is dict and isinstance(value, Mapping):
-        kt, vt = args if args else (Any, Any)
-        return all(is_type(k, kt) and is_type(v, vt) for k, v in value.items())
+        if origin is dict and isinstance(value, Mapping):
+            kt, vt = args if args else (Any, Any)
+            return all(is_type(k, kt) and is_type(v, vt) for k, v in value.items())
 
-    if origin is tuple:
-        if len(args) == 0 or args == ((),):  # special empty-tuple format
-            return isinstance(value, tuple) and len(value) == 0
-        if len(args) > 1 and args[1] == ...:
-            args = args[:1] * len(value)
-        return len(value) == len(args) and all(
-            is_type(v, vt) for v, vt in zip(value, args)
-        )
+        if origin is tuple:
+            if len(args) == 0 or args == ((),):  # special empty-tuple format
+                return isinstance(value, tuple) and len(value) == 0
+            if len(args) > 1 and args[1] == ...:
+                args = args[:1] * len(value)
+            return len(value) == len(args) and all(
+                is_type(v, vt) for v, vt in zip(value, args)
+            )
 
     return isinstance(value, cast(type, kind))
 
@@ -350,7 +351,9 @@ def casts(
 
 
 def casts(*args: Any, **kwargs: Any) -> Any:
-    if len(args) == 1 and callable(args[0]) and not kwargs:  # zero-arg decorator
+    if (
+        len(args) == 1 and isinstance(args[0], FunctionType) and not kwargs
+    ):  # zero-arg decorator
         func = cast(CastFn[Any], args[0])
         hints = get_types(func)
         assert len(hints) > 0
@@ -364,7 +367,8 @@ def casts(*args: Any, **kwargs: Any) -> Any:
         kwargs["to"] = args[1]
     if len(args) == 3:
         kwargs["func"] = args[2]
-    if len(args) > 3:
+    if len(args) > 3:  # pragma: no cover
+        # The type checkers won't let us test this.
         raise TypeError("Too many arguments.")
 
     src = kwargs.get("src", Any)

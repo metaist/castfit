@@ -117,6 +117,9 @@ def test_containers() -> None:
     assert castfit.to_type({"x": 1, 2: "3"}, list) == ["x", 2]
     assert castfit.to_type({"x": 1, 2: "3"}, set) == {"x", 2}
 
+    with raises(TypeError):  # bad data
+        castfit.to_type(["1", "a"], list[int])
+
     with raises(TypeError):  # input too short
         castfit.to_type([1], tuple[float, int])
     with raises(TypeError):  # input too long
@@ -242,3 +245,10 @@ def test_nested_class() -> None:
     assert len(have.dogs) == 2
     assert have.dogs[0].name == "Fido"
     assert have.dogs[1].age == 5
+
+
+def test_casts() -> None:
+    """Negative tests for adding casting functions."""
+
+    with raises(TypeError):
+        castfit.casts(int)
