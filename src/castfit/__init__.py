@@ -7,7 +7,9 @@
 # std
 from __future__ import annotations
 from dataclasses import dataclass
+from dataclasses import field
 from dataclasses import is_dataclass
+from dataclasses import replace
 from datetime import datetime
 from datetime import timezone
 from inspect import Parameter
@@ -31,8 +33,6 @@ from typing import TypeVar
 from typing import Union
 import sys
 
-# from typing import _SpecialForm
-
 # TODO 2025-10-31 @ py3.9 EOL: move imports above
 if sys.version_info >= (3, 10):  # pragma: no cover
     from types import NoneType
@@ -51,22 +51,16 @@ __all__ = [
     "__version__",
     "__pubdate__",
     #
-    # imported
-    "Never",
-    "NoneType",
-    "UnionType",
-    #
     # types
     "TypeForm",
     "CastFn",
-    "Casts",
     #
     # utilities
     "iterate",
     "setattrs",
-    "get_origin_type",
-    "Typed",
-    "get_types",
+    "TypeInfo",
+    "type_info",
+    "type_hints",
     #
     # top-level API
     "is_type",
@@ -96,7 +90,7 @@ Ignored = Optional[Any]
 SPECIAL_FORMS = (Any, Never, NoReturn, NoneType, Literal, Union, UnionType)
 """Special forms."""
 
-# TypeForm = Union[type[T], type(Any), type(Union), UnionType, _SpecialForm]
+# TypeForm = Union[type[T], type(Any)]
 TypeForm = Union[type[T], Any]
 """`Type` and special forms like `Any`, `Union`, etc."""
 # NOTE: We want `type[T] | _SpecialForm` but type checkers can't handle it.
@@ -125,7 +119,7 @@ def iterate(*items: T | Iterable[T]) -> Iterator[T]:
     NOTE: Although `str` is `Iterable`, we treat it as an individual item.
 
     Args:
-        *items (T | Iterable[T]): one or more items to be iterated.
+        *items (T | Iterable[T]): one or more items to be iterated
 
     Yields:
         T: an individual item
@@ -161,42 +155,84 @@ def setattrs(obj: T, values: Union[dict[str, Any], None] = None, **extra: Any) -
     return obj
 
 
-def get_origin_type(item: TypeForm[T] | T) -> type[T]:
-    """Returns the `item` origin, the `item` itself, or `type(item)`.
+@dataclass(frozen=True)
+class TypeInfo:
+    """Type information."""
 
-    See: [typing.get_origin](https://docs.python.org/3/library/typing.html#typing.get_origin)
-    """
-    origin = get_origin(item) or item
-    if isinstance(origin, type) or origin in SPECIAL_FORMS:
-        return cast(type[T], origin)  # cast due to mypy
-    return cast(type[T], type(item))  # cast due to mypy
-
-
-@dataclass
-class Typed:
-    """A typed value with a name and possible default."""
-
-    name: str
+    name: str = ""
     """Name of the field or parameter."""
 
-    kind: TypeForm[Any] = Any
+    hint: TypeForm[Any] = Any
     """Type hint or inferred type."""
 
     default: Any = Parameter.empty
-    """Default value."""
+    """Default value, if any."""
+
+    origin: Any = Any
+    """Type origin.
+
+    See: [`typing.get_origin`](https://docs.python.org/3/library/typing.html#typing.get_origin)
+    """
+
+    args: tuple[Any, ...] = field(default_factory=tuple)
+    """Type arguments.
+
+    See: [`typing.get_args`](https://docs.python.org/3/library/typing.html#typing.get_args)
+    """
 
 
-def get_types(item: type[T] | Callable[..., Any]) -> dict[str, Typed]:
-    """Returns names and inferred types for `item`.
+TYPE_CACHE: dict[Any, TypeInfo] = {}
+"""Type information cache used by `type_info()`."""
+
+
+def type_info(item: Any, use_cache: bool = True) -> TypeInfo:
+    """Return type information about `item`.
 
     Args:
-        item (type[T] | Callable[..., Any]): a class, lambda, or function.
+        item (Any): the value to get info about
+
+        use_cache (bool, default=True): whether or not to lookup/store results
+            in a local cache. Even when `True` if `item` is an instance, it will
+            not be stored in the local cache.
+    Returns:
+        TypeInfo: `item` type information
+    """
+    if use_cache:
+        try:
+            result = TYPE_CACHE[item]
+            if result.origin in (Literal, Union) and result.args:
+                # To preserve arg order, we need fresh copies the args.
+                return replace(result, args=get_args(item))
+            return result
+        except (KeyError, TypeError):
+            pass  # no such key or `item` is unhashable
+
+    args: tuple[Any, ...] = tuple()
+    if origin := get_origin(item):
+        args = get_args(item)
+        hint = item
+    elif item in SPECIAL_FORMS or isinstance(item, type):
+        hint = origin = item
+    else:  # instance
+        use_cache = False  # do not save instance information
+        hint = origin = type(item)
+
+    result = TypeInfo(hint=hint, origin=origin, args=args)
+    if use_cache:
+        TYPE_CACHE[item] = result
+    return result
+
+
+def type_hints(item: type[T] | Callable[..., Any]) -> dict[str, TypeInfo]:
+    """Returns names and inferred types for `item`.
+
+    See: [`typing.get_type_hints`](https://docs.python.org/3/library/typing.html#typing.get_type_hints)
+
+    Args:
+        item (type[T] | Callable[..., Any]): a class, lambda, or function
 
     Returns:
-        dict[str, Typed]: mapping of field/parameter names to an object that
-            contains the name, type, and default value (if any).
-
-    See: [typing.get_type_hints](https://docs.python.org/3/library/typing.html#typing.get_type_hints)
+        dict[str, TypeInfo]: mapping of field/parameter names to hint information
     """
     result = {}
     hints = get_type_hints(item)
@@ -205,20 +241,27 @@ def get_types(item: type[T] | Callable[..., Any]) -> dict[str, Typed]:
             for name, value in getattr(parent, "__dict__", {}).items():
                 if name in result or name.startswith("__"):
                     continue
-
-                kind = hints.get(name, Any if value is None else type(value))
-                result[name] = Typed(name, kind, value)
+                hint = hints.get(name, Any if value is None else type(value))
+                info = type_info(hint)
+                assert info.hint == hint
+                result[name] = replace(info, name=name, hint=hint, default=value)
 
         # get all the typed-without-default values
-        for name, kind in hints.items():
+        for name, hint in hints.items():
             if name not in result:
-                result[name] = Typed(name, kind)
-    else:
-        for param in signature(item).parameters.values():
-            result[param.name] = Typed(
-                param.name, hints.get(param.name, Any), param.default
-            )
-        result["return"] = Typed("return", hints.get("return", Any))
+                info = type_info(hint)
+                assert info.hint == hint
+                result[name] = replace(info, name=name, hint=hint)
+    else:  # non-class callable
+        for name, param in signature(item).parameters.items():
+            hint = hints.get(name, Any)
+            info = type_info(hint)
+            assert info.hint == hint
+            result[name] = replace(info, name=name, hint=hint, default=param.default)
+        hint = hints.get("return", Any)
+        info = type_info(hint)
+        assert info.hint == hint
+        result["return"] = replace(info, name="return", hint=hint)
     return result
 
 
@@ -234,8 +277,9 @@ def is_type(value: Any, kind: TypeForm[T]) -> bool:
     if kind in (None, NoneType):
         return value is None
 
-    origin = get_origin(kind) or kind
-    args = get_args(kind)
+    info = type_info(kind)
+    origin = info.origin
+    args = info.args
     if origin is Literal:
         return value in args
     if origin in (Union, UnionType):
@@ -245,11 +289,10 @@ def is_type(value: Any, kind: TypeForm[T]) -> bool:
     if not isinstance(value, cast(type, origin)):
         return False  # different containers
 
-    if isinstance(value, Sized):
+    if isinstance(value, Sized) and isinstance(value, Iterable):
         if origin in (list, set, dict) and len(value) == 0:
             return True  # empty mutable containers match
 
-        assert isinstance(value, Iterable)
         if origin in (list, set):
             vt = args[0] if args else Any
             return all(is_type(v, vt) for v in value)
@@ -274,12 +317,28 @@ def is_type(value: Any, kind: TypeForm[T]) -> bool:
 
 
 def to_type(value: Any, kind: TypeForm[T], casts: Optional[Casts] = None) -> T:
-    """Try to cast `value` to the type of `kind`."""
+    """Try to cast `value` to the type of `kind`.
+
+    Args:
+        value (Any): the value to convert
+
+        kind (TypeForm[T]): the type to convert to
+
+        casts (Optional[Casts], default=None): if provided, this mapping
+            of `tuple(source type, result type)` to converter functions
+            will be used instead of the registered converters.
+
+    Returns:
+        Any: the requested type
+
+    Raises:
+        TypeError: if there are any problems converting `value` to `kind`
+    """
     if is_type(value, kind):  # already done
         return cast(T, value)
 
     casts = casts or TYPE_CASTS
-    src: type[T] = get_origin_type(value)
+    src = type_info(value).origin
     fn: Union[Callable[[Any], T], None] = _get_casters(src, kind, casts)
     try:
         if fn:
@@ -311,7 +370,7 @@ def _get_casters(
 
         return _result
 
-    dest_origin: type[K] = get_origin_type(dest)
+    dest_origin: Any = type_info(dest).origin
     for left, right in [
         (src, dest),
         (src, dest_origin),
@@ -336,7 +395,7 @@ def casts(
 
 
 @overload  # zero-arg decorator
-def casts(f: F) -> F: ...
+def casts(func: F) -> F: ...
 
 
 @overload  # from `Any` to one or more types
@@ -350,6 +409,49 @@ def casts(
 
 
 def casts(*args: Any, **kwargs: Any) -> Any:
+    """Register a function to convert from/to one or more types.
+
+    **Zero Argument Form**<br />
+    Converts from first arg type to return type.
+    ```python
+    @casts
+    def f(x: int) -> str: return str(x)
+    ```
+
+    **One Argument Form**<br />
+    Converts from `Any` to `to` types.
+    ```python
+    @casts(to=str)
+    def f(x): return str(x)
+    ```
+
+    **Two Argument Form**<br />
+    Converts from `src` types to `to` types.
+    ```python
+    @casts(int, to=str)
+    def f(x): return str(x)
+    ```
+
+    **Functional Form**<br />
+    Register the function explicitly.
+    ```python
+    casts(int, str, lambda x: str(x))
+    ```
+
+    Args:
+        src (TypeForm[T] | Iterable[TypeForm[T]]):
+            one ore more types to convert from
+
+        to (TypeForm[T] | Iterable[TypeForm[T]]):
+            one ore more types to convert to
+
+        func (CastFn[Any]): converter function
+
+    Returns:
+        (CastFn[Any] | Callable[[CastFn[Any]], CastFn[Any]]):
+            converter function or a function that returns the converter function
+    """
+
     if (
         len(args) == 1
         and callable(args[0])
@@ -357,10 +459,10 @@ def casts(*args: Any, **kwargs: Any) -> Any:
         and not kwargs
     ):  # zero-arg decorator
         func = cast(CastFn[Any], args[0])
-        hints = get_types(func)
+        hints = type_hints(func)
         assert len(hints) > 0
-        src: TypeForm[Any] = get_origin_type(list(hints.values())[0].kind)
-        to: TypeForm[Any] = get_origin_type(hints["return"].kind)
+        src = next(iter(hints.values())).origin
+        to = hints["return"].origin
         return casts(src, to, func)
 
     if len(args) >= 1:
@@ -425,17 +527,18 @@ def _to_union(
     kind: TypeForm[T],
     casts: Optional[Casts] = None,
 ) -> T:
+    """Return first cast that works."""
     for arg in get_args(kind):
         try:
             return cast(T, to_type(value, arg, casts))
-        except (TypeError, ValueError):
+        except (AssertionError, TypeError, ValueError):
             pass
     raise TypeError(f"Cannot cast {value!r} to {kind}")
 
 
 @casts
 def _str_to_int(value: str) -> int:
-    """Cast `value` into an `int`."""
+    """Return `value` as an `int`."""
     try:
         return int(value)
     except ValueError:
@@ -448,11 +551,10 @@ def _to_bytes(
     kind: type[bytes] = bytes,
     casts: Union[Casts, None] = None,
 ) -> bytes:
-    """Cast `value` into `bytes`, encoding `str` with a default encoding if needed."""
+    """Return `value` as `bytes`, encoding `str` with a default encoding if needed."""
     if isinstance(value, str):
         return value.encode(DEFAULT_ENCODING)
-    cls: type[bytes] = get_origin_type(kind)
-    return cls(value)
+    return kind(value)
 
 
 @casts
@@ -461,11 +563,10 @@ def _to_str(
     kind: type[str] = str,
     casts: Optional[Casts] = None,
 ) -> str:
-    """Cast `value` into `str`, decoding `bytes` with a default encoding if needed."""
+    """Return `value` as `str`, decoding `bytes` with a default encoding if needed."""
     if isinstance(value, bytes):
         return value.decode(DEFAULT_ENCODING)
-    cls: type[str] = get_origin_type(kind)
-    return cls(value)
+    return kind(value)
 
 
 @casts
@@ -474,11 +575,11 @@ def _to_list(
     kind: type[list[T]] = list,
     casts: Optional[Casts] = None,
 ) -> list[T]:
-    """Cast `value` into `list`."""
-    cls: type[list[T]] = get_origin_type(kind)
+    """Return `value` as a `list`."""
+    assert isinstance(value, Iterable)
     args = get_args(kind)
     val_type = args[0] if args else Any
-    return cls(to_type(val, val_type, casts) for val in value)
+    return kind(to_type(val, val_type, casts) for val in value)
 
 
 @casts
@@ -487,11 +588,11 @@ def _to_set(
     kind: type[set[T]] = set,
     casts: Optional[Casts] = None,
 ) -> set[T]:
-    """Cast `value` into `set`."""
-    cls: type[set[T]] = get_origin_type(kind)
+    """Return `value` as a `set`."""
+    assert isinstance(value, Iterable)
     args = get_args(kind)
     val_type = args[0] if args else Any
-    return cls(to_type(val, val_type, casts) for val in value)
+    return kind(to_type(val, val_type, casts) for val in value)
 
 
 @casts
@@ -500,13 +601,15 @@ def _to_dict(
     kind: type[dict[K, T]] = dict,
     casts: Optional[Casts] = None,
 ) -> dict[K, T]:
-    """Cast `value` into a `dict`."""
-    cls: type[dict[K, T]] = get_origin_type(kind)
+    """Return `value` as a `dict`."""
+    assert isinstance(value, Sized)
     if len(value) == 0:
-        return cls()
+        return kind()
+
+    assert isinstance(value, Mapping)
     args = get_args(kind)
     key_type, val_type = args if args else (Any, Any)
-    return cls(
+    return kind(
         {
             to_type(k, key_type, casts): to_type(v, val_type, casts)
             for k, v in value.items()
@@ -521,15 +624,14 @@ def _to_tuple(
     casts: Optional[Casts] = None,
 ) -> tuple[Any, ...]:
     """Cast `value` into a `tuple`."""
-    cls: type[tuple[Any, ...]] = get_origin_type(kind)
     args = get_args(kind)
     if (not value or len(value) == 0) and len(args) == 0 or args == ((),):
-        return cls()
+        return kind()
     if len(args) > 1 and args[1] == ...:  # by definition
         args = args[:1] * len(value)
     if len(value) != len(args):
         raise ValueError(f"Different lengths when casting {value!r} to {kind}")
-    return cls(to_type(val, val_type, casts) for val, val_type in zip(value, args))
+    return kind(to_type(val, val_type, casts) for val, val_type in zip(value, args))
 
 
 casts(str, datetime, datetime.fromisoformat)
@@ -537,13 +639,13 @@ casts(str, datetime, datetime.fromisoformat)
 
 @casts((int, float), to=datetime)
 def _float_to_datetime(value: float) -> datetime:
-    """Cast `value` into a `datetime`."""
+    """Return `value` as a `datetime` in the UTC timezone."""
     return datetime.fromtimestamp(value, timezone.utc)
 
 
 @casts
 def _to_datetime(value: Any) -> datetime:
-    """Cast `value` into a `datetime`."""
+    """Return `value` as a `datetime`."""
     if isinstance(value, datetime):
         return value
     if isinstance(value, (list, tuple)):  # try to unpack values
@@ -559,21 +661,19 @@ def _to_class(
     kind: type[T],
     casts: Optional[Casts] = None,
 ) -> T:
-    """Cast `value` to an instance of `kind`."""
-    cls: type[T] = get_origin_type(kind)
+    """Return `value` as an instance of `kind`."""
     if isinstance(value, dict):
-        hints = get_types(cls)
         data: dict[str, Any] = {
-            name: to_type(value.get(name, hint.default), hint.kind, casts)
-            for name, hint in hints.items()
+            name: to_type(value.get(name, info.default), info.hint, casts)
+            for name, info in type_hints(kind).items()
         }
-        if is_dataclass(cls):
-            return cast(T, cls(**data))
+        if is_dataclass(kind):
+            return cast(T, kind(**data))
         else:
-            return setattrs(cls(), **data)
+            return setattrs(kind(), **data)
 
     # try passing it to the constructor
-    return cls(value)  # type: ignore[call-arg]
+    return kind(value)  # type: ignore[call-arg]
 
 
 def castfit(
@@ -582,5 +682,25 @@ def castfit(
     *,
     casts: Optional[Casts] = None,
 ) -> T:
-    """Construct a `spec` using `data` that has been cast appropriately."""
+    """Return an instance of `spec` using `data` to set field values.
+
+    We use type hints to help us figure out how to convert the provided
+    data into the field values.
+
+    Args:
+        spec (type[T]): plain `class` or `dataclass`; use type hints and
+            defaults to define how the data should be converted.
+
+        data (dict[str, Any]): field names mapped to values
+
+        casts (Optional[Casts], default=None): if provided, this mapping
+            of `tuple(source type, result type)` to converter functions
+            will be used instead of the registered converters.
+
+    Returns:
+        Any: an instance of `spec` with fields set
+
+    Raises:
+        TypeError: if there is a problem converting any of the fields
+    """
     return _to_class(data, spec, casts)

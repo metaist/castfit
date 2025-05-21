@@ -2,10 +2,12 @@
 from __future__ import annotations
 from typing import Any
 from typing import Union
+from typing import Literal
 
 # pkg
+from castfit import TypeInfo
+from castfit import UnionType
 import castfit
-from castfit import Typed
 
 
 class Point:
@@ -31,34 +33,56 @@ def test_setattrs() -> None:
     assert obj.y is True
 
 
-def test_get_origin_type() -> None:
-    """Get the appropriate constructor."""
-    assert castfit.get_origin_type(list[int]) is list
-    assert castfit.get_origin_type(list) is list
-    assert castfit.get_origin_type([]) is list
+def test_type_info() -> None:
+    """Get type information."""
+    assert castfit.type_info(Any) == TypeInfo(hint=Any, origin=Any)
+    assert castfit.type_info(Any, use_cache=False) == TypeInfo(hint=Any, origin=Any)
+    assert castfit.type_info(Literal) == TypeInfo(hint=Literal, origin=Literal)
+    assert castfit.type_info(Literal["r", "w"]) == TypeInfo(
+        hint=Literal["r", "w"], origin=Literal, args=("r", "w")
+    )
+    assert castfit.type_info(Literal["w", "r"]) == TypeInfo(
+        hint=Literal["w", "r"], origin=Literal, args=("w", "r")
+    ), "expect preserved arg order"
 
-    class MyList(list[int]):
-        pass
+    assert castfit.type_info(Union) == TypeInfo(hint=Union, origin=Union)
+    assert castfit.type_info(UnionType) == TypeInfo(hint=UnionType, origin=UnionType)
+    assert castfit.type_info(Union[str, int]) == TypeInfo(
+        hint=Union[str, int], origin=Union, args=(str, int)
+    )
+    assert castfit.type_info(Union[int, str]) == TypeInfo(
+        hint=Union[int, str], origin=Union, args=(int, str)
+    ), "expect preserved arg order"
 
-    assert castfit.get_origin_type(MyList) is MyList
-    assert castfit.get_origin_type(MyList([1, 2, 3])) is MyList
+    assert castfit.type_info(list) == TypeInfo(hint=list, origin=list)
+    assert castfit.type_info(list[int]) == TypeInfo(
+        hint=list[int], origin=list, args=(int,)
+    )
+
+    assert castfit.type_info([1, 2, 3]) == TypeInfo(hint=list, origin=list)
+    assert castfit.type_info(3) == TypeInfo(hint=int, origin=int)
+
+    class MyList(list[int]): ...
+
+    assert castfit.type_info(MyList) == TypeInfo(hint=MyList, origin=MyList)
+    assert castfit.type_info(MyList([1, 2, 3])) == TypeInfo(hint=MyList, origin=MyList)
 
 
-def test_get_types() -> None:
+def test_type_hints() -> None:
     """Get type hints."""
     # lambda produces an unknown return type
-    assert castfit.get_types(lambda x: x) == {
-        "x": Typed("x"),
-        "return": Typed("return", Any),
+    assert castfit.type_hints(lambda x: x) == {
+        "x": TypeInfo("x", Any),
+        "return": TypeInfo("return"),
     }
 
     def _x(x: int, y: str = "works") -> bool:
         return bool(x)
 
-    assert castfit.get_types(_x) == {
-        "x": Typed("x", int),
-        "y": Typed("y", str, "works"),
-        "return": Typed("return", bool),
+    assert castfit.type_hints(_x) == {
+        "x": TypeInfo("x", int, origin=int),
+        "y": TypeInfo("y", str, "works", origin=str),
+        "return": TypeInfo("return", bool, origin=bool),
     }
 
     class X:
@@ -68,10 +92,12 @@ def test_get_types() -> None:
         untyped = None
         untyped_default = 5
 
-    assert castfit.get_types(X) == {
-        "typed": Typed("typed", int),
-        "typed_none": Typed("typed_none", Union[int, None], None),
-        "typed_default": Typed("typed_default", bool, True),
-        "untyped": Typed("untyped", Any, None),
-        "untyped_default": Typed("untyped_default", int, 5),
+    assert castfit.type_hints(X) == {
+        "typed": TypeInfo("typed", int, origin=int),
+        "typed_none": TypeInfo(
+            "typed_none", Union[int, None], None, origin=Union, args=(int, type(None))
+        ),
+        "typed_default": TypeInfo("typed_default", bool, True, origin=bool),
+        "untyped": TypeInfo("untyped", Any, None),
+        "untyped_default": TypeInfo("untyped_default", int, 5, origin=int),
     }

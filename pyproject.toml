@@ -117,7 +117,7 @@ cog = "cog -r README.md"
 pdoc = """
   rm -rf docs;
   mkdir -p docs;
-  pdoc3 \
+  pdoc \
     --html \
     --output-dir docs \
     --config sort_identifiers=False \
