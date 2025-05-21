@@ -1,14 +1,12 @@
 # std
+from __future__ import annotations
 from datetime import datetime
 from typing import Any
-from typing import Dict
-from typing import List
 from typing import Literal
-from typing import Optional
-from typing import Set
-from typing import Tuple
-from typing import Union
 from typing import NoReturn
+from typing import Optional
+from typing import Union
+import sys
 
 # pkg
 import castfit
@@ -70,41 +68,52 @@ def test_union() -> None:
     assert not castfit.is_type(42, Union[str, float])
 
 
+# TODO 2025-10-31 @ py3.9 EOL: remove conditional
+if sys.version_info >= (3, 10):
+
+    def test_union_type() -> None:
+        """Any of a `UnionType` args can match."""
+        assert castfit.is_type(42, int | str)
+
+
 def test_empty() -> None:
     """Empty containers match."""
-    assert castfit.is_type(dict(), Dict[str, int])
-    assert castfit.is_type(list(), List[int])
-    assert castfit.is_type(set(), Set[int])
+    assert castfit.is_type(dict(), dict[str, int])
+    assert castfit.is_type(list(), list[int])
+    assert castfit.is_type(set(), set[int])
 
 
 def test_list() -> None:
     """Every item in the list or set must match."""
-    assert castfit.is_type([1], List[int])
-    assert castfit.is_type({6, 7}, Set[int])
+    assert castfit.is_type([1], list)
+    assert castfit.is_type([1], list[int])
+    assert castfit.is_type({6, 7}, set)
+    assert castfit.is_type({6, 7}, set[int])
 
-    assert castfit.is_type([3, 5, "test", "fun"], List[Union[int, str]])
+    assert castfit.is_type([3, 5, "test", "fun"], list[Union[int, str]])
 
-    assert not castfit.is_type([1], Set[int])
-    assert not castfit.is_type({1}, List[int])
+    assert not castfit.is_type([1], set[int])
+    assert not castfit.is_type({1}, list[int])
 
 
 def test_tuple() -> None:
     """Every item in the tuple must match."""
-    assert castfit.is_type((), Tuple)
-    assert castfit.is_type((), Tuple[()])
-    assert castfit.is_type((3, "yes", 7.5), Tuple[int, str, float])
-    assert castfit.is_type((1, 2, 3), Tuple[int, ...])
+    assert castfit.is_type((), tuple)
+    assert castfit.is_type((), tuple[()])
+    assert castfit.is_type((3, "yes", 7.5), tuple[int, str, float])
+    assert castfit.is_type((1, 2, 3), tuple[int, ...])
 
-    assert not castfit.is_type([], Tuple)
+    assert not castfit.is_type([], tuple)
 
 
 def test_dict() -> None:
     """Keys and values must match."""
-    assert castfit.is_type({"field": 2.0}, Dict[str, float])
-    assert castfit.is_type({"x": 1, "y": "test"}, Dict[str, Union[int, str]])
+    assert castfit.is_type({"field": 2.0}, dict)
+    assert castfit.is_type({"field": 2.0}, dict[str, float])
+    assert castfit.is_type({"x": 1, "y": "test"}, dict[str, Union[int, str]])
 
-    assert castfit.is_type({("x", 1): ["z"]}, Dict[Tuple[str, int], List[str]])
-    assert not castfit.is_type([], Dict[str, str])
+    assert castfit.is_type({("x", 1): ["z"]}, dict[tuple[str, int], list[str]])
+    assert not castfit.is_type([], dict[str, str])
 
 
 def test_datetime() -> None:
