@@ -54,6 +54,18 @@ def test_type_info() -> None:
         hint=Union[int, str], origin=Union, args=(int, str)
     ), "expect preserved arg order"
 
+    assert castfit.type_info(dict[str, Union[int, str]]) == TypeInfo(
+        hint=dict[str, Union[int, str]], origin=dict, args=(str, Union[int, str])
+    )
+    assert castfit.type_info(dict[str, Union[str, int]]) == TypeInfo(
+        hint=dict[str, Union[str, int]],
+        origin=dict,
+        args=(
+            str,
+            Union[str, int],
+        ),
+    ), "expect preserved sub-arg order"
+
     assert castfit.type_info(list) == TypeInfo(hint=list, origin=list)
     assert castfit.type_info(list[int]) == TypeInfo(
         hint=list[int], origin=list, args=(int,)

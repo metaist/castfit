@@ -192,20 +192,18 @@ def type_info(item: Any, use_cache: bool = True) -> TypeInfo:
         item (Any): the value to get info about
 
         use_cache (bool, default=True): whether or not to lookup/store results
-            in a local cache. Even when `True` if `item` is an instance, it will
-            not be stored in the local cache.
+            in a local cache. Even when `use_cache=True` if `item` is an
+            instance, `Literal`, `Union`, or `UnionType`, it will not be
+            stored in the local cache.
+
     Returns:
         TypeInfo: `item` type information
     """
     if use_cache:
         try:
-            result = TYPE_CACHE[item]
-            if result.origin in (Literal, Union) and result.args:
-                # To preserve arg order, we need fresh copies the args.
-                return replace(result, args=get_args(item))
-            return result
+            return TYPE_CACHE[item]
         except (KeyError, TypeError):
-            pass  # no such key or `item` is unhashable
+            pass  # missing key or `item` is unhashable
 
     args: tuple[Any, ...] = tuple()
     if origin := get_origin(item):
@@ -218,7 +216,7 @@ def type_info(item: Any, use_cache: bool = True) -> TypeInfo:
         hint = origin = type(item)
 
     result = TypeInfo(hint=hint, origin=origin, args=args)
-    if use_cache:
+    if use_cache and origin not in (Union, UnionType, Literal):
         TYPE_CACHE[item] = result
     return result
 
