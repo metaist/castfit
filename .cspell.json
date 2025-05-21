@@ -10,6 +10,7 @@
     "dataclass",
     "dataclasses",
     "docopt",
+    "docstrings",
     "doctest",
     "htmlcov",
     "isinstance",

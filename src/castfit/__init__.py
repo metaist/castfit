@@ -69,8 +69,8 @@ __all__ = [
     "castfit",
 ]
 
-__version__ = "0.1.1"
-__pubdate__ = "2025-04-28T14:32:37Z"
+__version__ = "0.1.2"
+__pubdate__ = "2025-05-21T20:54:51Z"
 
 DEFAULT_ENCODING = "utf-8"
 """Default file encoding."""
