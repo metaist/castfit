@@ -10,7 +10,7 @@ from typing import Union
 import sys
 
 # lib
-from pytest import raises
+from pytest import raises  # type: ignore
 
 # pkg
 from castfit import Never
@@ -245,6 +245,23 @@ def test_nested_class() -> None:
     assert len(have.dogs) == 2
     assert have.dogs[0].name == "Fido"
     assert have.dogs[1].age == 5
+
+
+def test_class_with_readonly_prop() -> None:
+    """Cast data to read-only property."""
+
+    class Post:
+        title: str
+        tags: list[str]
+
+        @property
+        def front_matter(self) -> dict[str, Any]:
+            return dict(title=self.title, tags=self.tags)
+
+    data = {"title": "Example title", "tags": []}
+    have = castfit.castfit(Post, data)
+    assert have.title == "Example title"
+    assert have.tags == []
 
 
 def test_casts() -> None:
