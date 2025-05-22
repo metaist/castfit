@@ -205,6 +205,7 @@ def type_info(item: Any, use_cache: bool = True) -> TypeInfo:
         except (KeyError, TypeError):
             pass  # missing key or `item` is unhashable
 
+    name: str = getattr(item, "__name__", "")
     args: tuple[Any, ...] = tuple()
     if origin := get_origin(item):
         args = get_args(item)
@@ -215,7 +216,7 @@ def type_info(item: Any, use_cache: bool = True) -> TypeInfo:
         use_cache = False  # do not save instance information
         hint = origin = type(item)
 
-    result = TypeInfo(hint=hint, origin=origin, args=args)
+    result = TypeInfo(name=name, hint=hint, origin=origin, args=args)
     if use_cache and origin not in (Union, UnionType, Literal):
         TYPE_CACHE[item] = result
     return result

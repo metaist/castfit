@@ -35,29 +35,39 @@ def test_setattrs() -> None:
 
 def test_type_info() -> None:
     """Get type information."""
-    assert castfit.type_info(Any) == TypeInfo(hint=Any, origin=Any)
-    assert castfit.type_info(Any, use_cache=False) == TypeInfo(hint=Any, origin=Any)
-    assert castfit.type_info(Literal) == TypeInfo(hint=Literal, origin=Literal)
+    assert castfit.type_info(Any) == TypeInfo(name="Any", hint=Any, origin=Any)
+    assert castfit.type_info(Any, use_cache=False) == TypeInfo(
+        name="Any", hint=Any, origin=Any
+    )
+    assert castfit.type_info(Literal) == TypeInfo(
+        name="Literal", hint=Literal, origin=Literal
+    )
     assert castfit.type_info(Literal["r", "w"]) == TypeInfo(
-        hint=Literal["r", "w"], origin=Literal, args=("r", "w")
+        name="Literal", hint=Literal["r", "w"], origin=Literal, args=("r", "w")
     )
     assert castfit.type_info(Literal["w", "r"]) == TypeInfo(
-        hint=Literal["w", "r"], origin=Literal, args=("w", "r")
+        name="Literal", hint=Literal["w", "r"], origin=Literal, args=("w", "r")
     ), "expect preserved arg order"
 
-    assert castfit.type_info(Union) == TypeInfo(hint=Union, origin=Union)
-    assert castfit.type_info(UnionType) == TypeInfo(hint=UnionType, origin=UnionType)
+    assert castfit.type_info(Union) == TypeInfo(name="Union", hint=Union, origin=Union)
+    assert castfit.type_info(UnionType) == TypeInfo(
+        name="UnionType", hint=UnionType, origin=UnionType
+    )
     assert castfit.type_info(Union[str, int]) == TypeInfo(
-        hint=Union[str, int], origin=Union, args=(str, int)
+        name="Union", hint=Union[str, int], origin=Union, args=(str, int)
     )
     assert castfit.type_info(Union[int, str]) == TypeInfo(
-        hint=Union[int, str], origin=Union, args=(int, str)
+        name="Union", hint=Union[int, str], origin=Union, args=(int, str)
     ), "expect preserved arg order"
 
     assert castfit.type_info(dict[str, Union[int, str]]) == TypeInfo(
-        hint=dict[str, Union[int, str]], origin=dict, args=(str, Union[int, str])
+        name="dict",
+        hint=dict[str, Union[int, str]],
+        origin=dict,
+        args=(str, Union[int, str]),
     )
     assert castfit.type_info(dict[str, Union[str, int]]) == TypeInfo(
+        name="dict",
         hint=dict[str, Union[str, int]],
         origin=dict,
         args=(
@@ -66,9 +76,9 @@ def test_type_info() -> None:
         ),
     ), "expect preserved sub-arg order"
 
-    assert castfit.type_info(list) == TypeInfo(hint=list, origin=list)
+    assert castfit.type_info(list) == TypeInfo(name="list", hint=list, origin=list)
     assert castfit.type_info(list[int]) == TypeInfo(
-        hint=list[int], origin=list, args=(int,)
+        name="list", hint=list[int], origin=list, args=(int,)
     )
 
     assert castfit.type_info([1, 2, 3]) == TypeInfo(hint=list, origin=list)
@@ -76,8 +86,12 @@ def test_type_info() -> None:
 
     class MyList(list[int]): ...
 
-    assert castfit.type_info(MyList) == TypeInfo(hint=MyList, origin=MyList)
-    assert castfit.type_info(MyList([1, 2, 3])) == TypeInfo(hint=MyList, origin=MyList)
+    assert castfit.type_info(MyList) == TypeInfo(
+        name="MyList", hint=MyList, origin=MyList
+    )
+    assert castfit.type_info(MyList([1, 2, 3])) == TypeInfo(
+        hint=MyList, origin=MyList
+    ), "instances don't have __name__"
 
 
 def test_type_hints() -> None:
