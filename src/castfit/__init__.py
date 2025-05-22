@@ -147,9 +147,11 @@ def iterate(*items: T | Iterable[T]) -> Iterator[T]:
             yield item
 
 
-def setattrs(obj: T, values: Union[dict[str, Any], None] = None, **extra: Any) -> T:
+def setattrs(obj: T, *values: dict[str, Any], **extra: Any) -> T:
     """Like `setattr()` but for multiple values and returns the object."""
-    items = {**values, **extra} if values else extra
+    items = {}
+    for value in values + (extra,):
+        items.update(value)
     for name, val in items.items():
         setattr(obj, name, val)
     return obj
@@ -240,27 +242,33 @@ def type_hints(item: type[T] | Callable[..., Any]) -> dict[str, TypeInfo]:
             for name, value in getattr(parent, "__dict__", {}).items():
                 if name in result or name.startswith("__"):
                     continue
-                hint = hints.get(name, Any if value is None else type(value))
-                info = type_info(hint)
-                assert info.hint == hint
-                result[name] = replace(info, name=name, hint=hint, default=value)
+
+                if isinstance(value, property):
+                    if value.fset:
+                        info = list(type_hints(value.fset).values())[1]
+                    elif value.fget:
+                        info = type_hints(value.fget)["return"]
+                    else:  # pragma: no cover
+                        continue
+
+                    # `property` has no default
+                    result[name] = replace(info, name=name, default=Parameter.empty)
+                else:  # normal field
+                    hint = hints.get(name, Any if value is None else type(value))
+                    info = type_info(hint)
+                    result[name] = replace(info, name=name, default=value)
 
         # get all the typed-without-default values
         for name, hint in hints.items():
             if name not in result:
-                info = type_info(hint)
-                assert info.hint == hint
-                result[name] = replace(info, name=name, hint=hint)
+                result[name] = replace(type_info(hint), name=name)
+
     else:  # non-class callable
         for name, param in signature(item).parameters.items():
-            hint = hints.get(name, Any)
-            info = type_info(hint)
-            assert info.hint == hint
-            result[name] = replace(info, name=name, hint=hint, default=param.default)
-        hint = hints.get("return", Any)
-        info = type_info(hint)
-        assert info.hint == hint
-        result["return"] = replace(info, name="return", hint=hint)
+            info = type_info(hints.get(name, Any))
+            result[name] = replace(info, name=name, default=param.default)
+        info = type_info(hints.get("return", Any))
+        result["return"] = replace(info, name="return")
     return result
 
 
@@ -662,14 +670,27 @@ def _to_class(
 ) -> T:
     """Return `value` as an instance of `kind`."""
     if isinstance(value, dict):
-        data: dict[str, Any] = {
-            name: to_type(value.get(name, info.default), info.hint, casts)
-            for name, info in type_hints(kind).items()
-        }
+        hints = type_hints(kind)
+        data: dict[str, Any] = {}
+        props: dict[str, Any] = {}
+        for name, info in hints.items():
+            val = value.get(name, info.default)
+            if val is Parameter.empty:  # no value supplied, no default
+                if not (info.origin is Union and NoneType in info.args):
+                    continue  # can't use this field
+                val = None  # we can at least choose this option
+
+            typed: Any = to_type(val, info.hint, casts)
+            if isinstance(getattr(kind, name, None), property):
+                props[name] = typed
+            else:
+                data[name] = typed
+
         if is_dataclass(kind):
-            return cast(T, kind(**data))
+            print(data, props)
+            return setattrs(cast(T, kind(**data)), props)
         else:
-            return setattrs(kind(), **data)
+            return setattrs(kind(), data, props)
 
     # try passing it to the constructor
     return kind(value)  # type: ignore[call-arg]

@@ -1,5 +1,6 @@
 # std
 from dataclasses import dataclass
+from dataclasses import field
 from datetime import datetime
 from datetime import timezone
 from pathlib import Path
@@ -247,7 +248,7 @@ def test_nested_class() -> None:
     assert have.dogs[1].age == 5
 
 
-def test_class_with_readonly_prop() -> None:
+def test_class_with_read_only_prop() -> None:
     """Cast data to read-only property."""
 
     class Post:
@@ -258,10 +259,79 @@ def test_class_with_readonly_prop() -> None:
         def front_matter(self) -> dict[str, Any]:
             return dict(title=self.title, tags=self.tags)
 
-    data = {"title": "Example title", "tags": []}
+    data = {"title": "Example title", "tags": ["tag1"]}
     have = castfit.castfit(Post, data)
     assert have.title == "Example title"
-    assert have.tags == []
+    assert have.tags == ["tag1"]
+
+    with raises(AttributeError):
+        castfit.castfit(Post, {"front_matter": data})
+
+
+def test_dataclass_with_read_only_prop() -> None:
+    """Cast data to read-only property in a dataclass."""
+
+    @dataclass
+    class Post:
+        title: str = ""
+        tags: list[str] = field(default_factory=list[str])
+
+        @property
+        def front_matter(self) -> dict[str, Any]:
+            return dict(title=self.title, tags=self.tags)
+
+    data = {"title": "Example title", "tags": ["tag1"]}
+    have = castfit.castfit(Post, data)
+    assert have.title == "Example title"
+    assert have.tags == ["tag1"]
+
+    with raises(AttributeError):
+        castfit.castfit(Post, {"front_matter": data})
+
+
+def test_class_with_read_write_prop() -> None:
+    """Cast data to read-write property."""
+
+    class Post:
+        title: str
+        tags: list[str]
+
+        @property
+        def front_matter(self) -> dict[str, Any]:
+            return dict(title=self.title, tags=self.tags)
+
+        @front_matter.setter
+        def front_matter(self, value: dict[str, Any]) -> None:
+            self.title = value.get("title", "")
+            self.tags = value.get("tags", [])
+
+    data = {"front_matter": {"title": "Example title", "tags": ["tag1"]}}
+    have = castfit.castfit(Post, data)
+    assert have.title == "Example title"
+    assert have.tags == ["tag1"]
+
+
+def test_dataclass_with_read_write_prop() -> None:
+    """Cast data to read-write property in a dataclass."""
+
+    @dataclass
+    class Post:
+        title: str = ""
+        tags: list[str] = field(default_factory=list[str])
+
+        @property
+        def front_matter(self) -> dict[str, Any]:
+            return dict(title=self.title, tags=self.tags)
+
+        @front_matter.setter
+        def front_matter(self, value: dict[str, Any]) -> None:
+            self.title = value.get("title", "")
+            self.tags = value.get("tags", [])
+
+    data = {"front_matter": {"title": "Example title", "tags": ["tag1"]}}
+    have = castfit.castfit(Post, data)
+    assert have.title == "Example title"
+    assert have.tags == ["tag1"]
 
 
 def test_casts() -> None:
