@@ -2,6 +2,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from dataclasses import field
+from types import FunctionType
 from typing import Any
 from typing import Literal
 from typing import Union
@@ -114,6 +115,13 @@ def test_type_instance() -> None:
     assert castfit.type_info(MyList([1, 2, 3])) == TypeInfo(
         hint=MyList, origin=MyList
     ), "instances don't have __name__"
+
+
+def test_type_function() -> None:
+    """Function type info."""
+    assert castfit.type_info(lambda x: x) == TypeInfo(
+        "<lambda>", FunctionType, origin=FunctionType
+    )
 
 
 def test_type_hint_lambda() -> None:

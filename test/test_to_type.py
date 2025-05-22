@@ -5,6 +5,7 @@ from datetime import datetime
 from datetime import timezone
 from pathlib import Path
 from typing import Any
+from typing import Callable
 from typing import Literal
 from typing import Optional
 from typing import Union
@@ -332,6 +333,20 @@ def test_dataclass_with_read_write_prop() -> None:
     have = castfit.castfit(Post, data)
     assert have.title == "Example title"
     assert have.tags == ["tag1"]
+
+
+def test_dataclass_with_method() -> None:
+    """Cast dataclass to class with method."""
+
+    @dataclass
+    class Args:
+        help: bool
+
+        def asdict(self) -> None: ...
+
+    data = {"help": True}
+    have = castfit.castfit(Args, data)
+    assert have.help is True
 
 
 def test_casts() -> None:
