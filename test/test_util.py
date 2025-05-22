@@ -1,8 +1,10 @@
 # std
 from __future__ import annotations
+from dataclasses import dataclass
+from dataclasses import field
 from typing import Any
-from typing import Union
 from typing import Literal
+from typing import Union
 
 # pkg
 from castfit import TypeInfo
@@ -10,13 +12,13 @@ from castfit import UnionType
 import castfit
 
 
-class Point:
-    x: int = 0
-    y: bool = False
-
-
 def test_setattrs() -> None:
     """Set multiple attributes on an object."""
+
+    class Point:
+        x: int = 0
+        y: bool = False
+
     obj = Point()
     castfit.setattrs(obj, x=1, y=True)
     assert obj.x == 1
@@ -32,13 +34,23 @@ def test_setattrs() -> None:
     assert obj.x == 1
     assert obj.y is True
 
+    obj = Point()
+    castfit.setattrs(obj, {"x": 1}, {"y": True})
+    assert obj.x == 1
+    assert obj.y is True
 
-def test_type_info() -> None:
-    """Get type information."""
+
+def test_type_info_any() -> None:
+    """`Any` type info."""
     assert castfit.type_info(Any) == TypeInfo(name="Any", hint=Any, origin=Any)
     assert castfit.type_info(Any, use_cache=False) == TypeInfo(
         name="Any", hint=Any, origin=Any
     )
+
+
+def test_type_literal() -> None:
+    """`Literal` type info."""
+
     assert castfit.type_info(Literal) == TypeInfo(
         name="Literal", hint=Literal, origin=Literal
     )
@@ -49,6 +61,9 @@ def test_type_info() -> None:
         name="Literal", hint=Literal["w", "r"], origin=Literal, args=("w", "r")
     ), "expect preserved arg order"
 
+
+def test_type_union() -> None:
+    """`Union` type info."""
     assert castfit.type_info(Union) == TypeInfo(name="Union", hint=Union, origin=Union)
     assert castfit.type_info(UnionType) == TypeInfo(
         name="UnionType", hint=UnionType, origin=UnionType
@@ -76,11 +91,18 @@ def test_type_info() -> None:
         ),
     ), "expect preserved sub-arg order"
 
+
+def test_type_generics() -> None:
+    """Generic type info."""
+
     assert castfit.type_info(list) == TypeInfo(name="list", hint=list, origin=list)
     assert castfit.type_info(list[int]) == TypeInfo(
         name="list", hint=list[int], origin=list, args=(int,)
     )
 
+
+def test_type_instance() -> None:
+    """Instance type info."""
     assert castfit.type_info([1, 2, 3]) == TypeInfo(hint=list, origin=list)
     assert castfit.type_info(3) == TypeInfo(hint=int, origin=int)
 
@@ -94,13 +116,16 @@ def test_type_info() -> None:
     ), "instances don't have __name__"
 
 
-def test_type_hints() -> None:
-    """Get type hints."""
-    # lambda produces an unknown return type
+def test_type_hint_lambda() -> None:
+    """`lambda` has unknown argument and return types"""
     assert castfit.type_hints(lambda x: x) == {
         "x": TypeInfo("x", Any),
         "return": TypeInfo("return"),
     }
+
+
+def test_type_hint_function() -> None:
+    """Normal type hints."""
 
     def _x(x: int, y: str = "works") -> bool:
         return bool(x)
@@ -110,6 +135,10 @@ def test_type_hints() -> None:
         "y": TypeInfo("y", str, "works", origin=str),
         "return": TypeInfo("return", bool, origin=bool),
     }
+
+
+def test_type_hint_class() -> None:
+    """Mixed un/typed & with/without defaults."""
 
     class X:
         typed: int
@@ -126,4 +155,18 @@ def test_type_hints() -> None:
         "typed_default": TypeInfo("typed_default", bool, True, origin=bool),
         "untyped": TypeInfo("untyped", Any, None),
         "untyped_default": TypeInfo("untyped_default", int, 5, origin=int),
+    }
+
+
+def test_type_hint_dataclass() -> None:
+    """Dataclass with default values."""
+
+    @dataclass
+    class Post:
+        title: str = field(default="Untitled")
+        tags: list[str] = field(default_factory=list[str])
+
+    assert castfit.type_hints(Post) == {
+        "title": TypeInfo("title", str, default="Untitled", origin=str, args=()),
+        "tags": TypeInfo("tags", list[str], origin=list, args=(str,)),
     }

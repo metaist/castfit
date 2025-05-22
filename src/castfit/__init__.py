@@ -687,7 +687,6 @@ def _to_class(
                 data[name] = typed
 
         if is_dataclass(kind):
-            print(data, props)
             return setattrs(cast(T, kind(**data)), props)
         else:
             return setattrs(kind(), data, props)
