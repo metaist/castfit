@@ -349,6 +349,18 @@ def test_dataclass_with_method() -> None:
     assert have.help is True
 
 
+def test_dataclass_with_callable() -> None:
+    """Cast dataclass to class with method."""
+
+    @dataclass
+    class Args:
+        callback: Callable[[Any], Any]
+
+    data = {"callback": lambda x: x}
+    have = castfit.castfit(Args, data)
+    assert have.callback is data["callback"]
+
+
 def test_casts() -> None:
     """Negative tests for adding casting functions."""
 

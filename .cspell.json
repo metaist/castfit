@@ -3,6 +3,7 @@
   "language": "en",
   "words": [
     "Autobuild",
+    "bivariant",
     "castfit",
     "cattrs",
     "codeql",
@@ -35,6 +36,7 @@
     "PYTHONPATH",
     "pythonversion",
     "setattrs",
+    "setkeys",
     "setuptools",
     "typechecks",
     "venv"

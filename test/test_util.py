@@ -6,6 +6,7 @@ from types import FunctionType
 from typing import Any
 from typing import Literal
 from typing import Union
+import sys
 
 # pkg
 from castfit import TypeInfo
@@ -66,9 +67,14 @@ def test_type_literal() -> None:
 def test_type_union() -> None:
     """`Union` type info."""
     assert castfit.type_info(Union) == TypeInfo(name="Union", hint=Union, origin=Union)
-    assert castfit.type_info(UnionType) == TypeInfo(
-        name="UnionType", hint=UnionType, origin=UnionType
-    )
+    if sys.version_info >= (3, 10):
+        assert castfit.type_info(UnionType) == TypeInfo(
+            name="UnionType", hint=UnionType, origin=UnionType
+        )
+    else:
+        assert castfit.type_info(UnionType) == TypeInfo(
+            name="_UnionGenericAlias", hint=UnionType, origin=UnionType
+        )
     assert castfit.type_info(Union[str, int]) == TypeInfo(
         name="Union", hint=Union[str, int], origin=Union, args=(str, int)
     )
@@ -110,7 +116,7 @@ def test_type_instance() -> None:
     class MyList(list[int]): ...
 
     assert castfit.type_info(MyList) == TypeInfo(
-        name="MyList", hint=MyList, origin=MyList
+        name="MyList", hint=MyList, origin=list, args=(int,)
     )
     assert castfit.type_info(MyList([1, 2, 3])) == TypeInfo(
         hint=MyList, origin=MyList
