@@ -2,6 +2,7 @@
 from __future__ import annotations
 from datetime import datetime
 from typing import Any
+from typing import Callable
 from typing import Literal
 from typing import NoReturn
 from typing import Optional
@@ -74,6 +75,13 @@ if sys.version_info >= (3, 10):
     def test_union_type() -> None:
         """Any of a `UnionType` args can match."""
         assert castfit.is_type(42, int | str)
+
+
+def test_callable() -> None:
+    assert not castfit.is_type(42, Callable[..., Any])
+    assert not castfit.is_type(list, Callable[..., Any])
+    assert castfit.is_type(lambda x: x, Callable[[Any], Any])
+    assert castfit.is_type(datetime.fromisoformat, Callable[[float], datetime])
 
 
 def test_empty() -> None:

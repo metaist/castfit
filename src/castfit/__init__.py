@@ -542,6 +542,22 @@ def is_type(value: Any, kind: TypeForm[T]) -> bool:
         return value in args
     if origin in (Union, UnionType):
         return any(is_type(value, vt) for vt in args)
+    if origin in (Callable, CallableABC):
+        if not callable(value):
+            log.debug("%s is not callable", value)
+            return False
+        if isinstance(value, type):
+            log.debug("%s is a class", value)
+            return False
+        if isinstance(value, BuiltinFunctionType):
+            log.debug("%s is a builtin; we cannot get type hints", value)
+            return True
+
+        hints = type_hints(value)
+        return_type = hints.pop("return").hint
+        sig = Callable[[h.hint for h in hints.values()], return_type]
+        log.debug("%s must be a subtype of %s", sig, kind)
+        return is_subtype(sig, kind)
     # all special forms handled
 
     if not isinstance(value, cast(type, origin)):
