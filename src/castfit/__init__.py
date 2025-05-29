@@ -555,7 +555,8 @@ def is_type(value: Any, kind: TypeForm[T]) -> bool:
 
         hints = type_hints(value)
         return_type = hints.pop("return").hint
-        sig = Callable[[h.hint for h in hints.values()], return_type]
+        args = ([h.hint for h in hints.values()], return_type)
+        sig = getattr(Callable, "__getitem__")(args)
         log.debug("%s must be a subtype of %s", sig, kind)
         return is_subtype(sig, kind)
     # all special forms handled
