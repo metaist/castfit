@@ -1,6 +1,7 @@
 name: Upload Python Package
 
 on:
+  workflow_dispatch:
   release:
     types: [published]
 
@@ -26,7 +27,7 @@ jobs:
       - name: Install dependencies
         run: |
           uv sync --all-extras --dev
-          uv toll install ds-run
+          uv tool install ds-run
 
       - name: Build package
         run: ds build
