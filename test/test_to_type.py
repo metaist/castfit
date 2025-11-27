@@ -1,20 +1,22 @@
 # std
 from dataclasses import dataclass
+from dataclasses import field
 from datetime import datetime
 from datetime import timezone
 from pathlib import Path
+from types import NoneType
 from typing import Any
+from typing import Callable
 from typing import Literal
 from typing import Optional
 from typing import Union
-import sys
 
 # lib
-from pytest import raises
+from pytest import raises  # type: ignore
 
 # pkg
+# TODO 2026-10-31 @ py3.10 EOL: from typing import Never
 from castfit import Never
-from castfit import NoneType
 import castfit
 
 
@@ -82,12 +84,9 @@ def test_union() -> None:
         castfit.to_type(None, Union[int, float])
 
 
-# TODO 2025-10-31 @ py3.9 EOL: remove conditional
-if sys.version_info >= (3, 10):
-
-    def test_union_type() -> None:
-        """Any of a `UnionType` args can match."""
-        assert castfit.to_type(42, str | float) == "42"
+def test_union_type() -> None:
+    """Any of a `UnionType` args can match."""
+    assert castfit.to_type(42, str | float) == "42"
 
 
 def test_str_to_int() -> None:
@@ -245,6 +244,118 @@ def test_nested_class() -> None:
     assert len(have.dogs) == 2
     assert have.dogs[0].name == "Fido"
     assert have.dogs[1].age == 5
+
+
+def test_class_with_read_only_prop() -> None:
+    """Cast data to read-only property."""
+
+    class Post:
+        title: str
+        tags: list[str]
+
+        @property
+        def front_matter(self) -> dict[str, Any]:
+            return dict(title=self.title, tags=self.tags)
+
+    data = {"title": "Example title", "tags": ["tag1"]}
+    have = castfit.castfit(Post, data)
+    assert have.title == "Example title"
+    assert have.tags == ["tag1"]
+
+    with raises(AttributeError):
+        castfit.castfit(Post, {"front_matter": data})
+
+
+def test_dataclass_with_read_only_prop() -> None:
+    """Cast data to read-only property in a dataclass."""
+
+    @dataclass
+    class Post:
+        title: str = ""
+        tags: list[str] = field(default_factory=list[str])
+
+        @property
+        def front_matter(self) -> dict[str, Any]:
+            return dict(title=self.title, tags=self.tags)
+
+    data = {"title": "Example title", "tags": ["tag1"]}
+    have = castfit.castfit(Post, data)
+    assert have.title == "Example title"
+    assert have.tags == ["tag1"]
+
+    with raises(AttributeError):
+        castfit.castfit(Post, {"front_matter": data})
+
+
+def test_class_with_read_write_prop() -> None:
+    """Cast data to read-write property."""
+
+    class Post:
+        title: str
+        tags: list[str]
+
+        @property
+        def front_matter(self) -> dict[str, Any]:
+            return dict(title=self.title, tags=self.tags)
+
+        @front_matter.setter
+        def front_matter(self, value: dict[str, Any]) -> None:
+            self.title = value.get("title", "")
+            self.tags = value.get("tags", [])
+
+    data = {"front_matter": {"title": "Example title", "tags": ["tag1"]}}
+    have = castfit.castfit(Post, data)
+    assert have.title == "Example title"
+    assert have.tags == ["tag1"]
+
+
+def test_dataclass_with_read_write_prop() -> None:
+    """Cast data to read-write property in a dataclass."""
+
+    @dataclass
+    class Post:
+        title: str = ""
+        tags: list[str] = field(default_factory=list[str])
+
+        @property
+        def front_matter(self) -> dict[str, Any]:
+            return dict(title=self.title, tags=self.tags)
+
+        @front_matter.setter
+        def front_matter(self, value: dict[str, Any]) -> None:
+            self.title = value.get("title", "")
+            self.tags = value.get("tags", [])
+
+    data = {"front_matter": {"title": "Example title", "tags": ["tag1"]}}
+    have = castfit.castfit(Post, data)
+    assert have.title == "Example title"
+    assert have.tags == ["tag1"]
+
+
+def test_dataclass_with_method() -> None:
+    """Cast dataclass to class with method."""
+
+    @dataclass
+    class Args:
+        help: bool
+
+        def asdict(self) -> None: ...
+
+    data = {"help": True}
+    have = castfit.castfit(Args, data)
+    assert have.help is True
+
+
+def test_dataclass_with_callable() -> None:
+    """Cast dataclass to class with method."""
+
+    @dataclass
+    class Args:
+        callback: Callable[[Any], Any]
+
+    data = {"callback": lambda x: x}
+    have = castfit.castfit(Args, data)
+    assert have.callback is data["callback"]
 
 
 def test_casts() -> None:

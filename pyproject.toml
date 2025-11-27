@@ -1,15 +1,6 @@
 [build-system]
-requires = ["setuptools >= 40.8.0", "wheel"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools.packages.find]
-where = ["src"]
-
-[tool.setuptools.package-data]
-castfit = ["py.typed"]
-
-[tool.setuptools.dynamic]
-version = { attr = "castfit.__version__" }
+requires = ["uv_build>=0.9.9,<0.10.0"]
+build-backend = "uv_build"
 
 [project.urls]
 Homepage = "https://github.com/metaist/castfit"
@@ -19,11 +10,15 @@ Changelog = "https://github.com/metaist/castfit/blob/main/CHANGELOG.md"
 
 [project]
 name = "castfit"
+version = "0.1.2"
+
+authors = [{ name = "Metaist LLC", email = "metaist@metaist.com" }]
 description = "Basic type casting."
 keywords = ["type", "casting"]
+license = "MIT"
+license-files = ["LICENSE.md"]
+readme = "README.md"
 
-dynamic = ["version"]
-requires-python = ">=3.9"
 dependencies = [
   # lib => pinned range
 ]
@@ -34,16 +29,13 @@ optional-dependencies = { dev = [
   "ds-run",
   "mypy",
   "pdoc3",
-  "pip",
   "pyright",
   "pytest-cov",
   "pytest",
   "ruff",
+  "ty",
 ] }
-readme = "README.md"
-license = "MIT"
-license-files = ["LICENSE.md"]
-authors = [{ name = "Metaist LLC", email = "metaist@metaist.com" }]
+requires-python = ">=3.10,<=3.14"
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
@@ -52,11 +44,11 @@ classifiers = [
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Topic :: Software Development :: Libraries",
   "Typing :: Typed",
 ]
@@ -72,6 +64,19 @@ disable_error_code = "unused-ignore"
 exclude = ["**/_vendor/**"]
 
 [tool.ds.scripts] # run dev scripts <https://github.com/metaist/ds>
+# Build
+setup = "uv sync --all-extras --dev"
+build = "uv build"
+clean = """
+  rm -rf .mypy_cache;
+  rm -rf .pytest_cache;
+  rm -rf .ruff_cache;
+  rm -rf dist;
+  rm -rf htmlcov;
+  rm -rf src/*.egg-info
+  rm -rf .coverage;
+"""
+
 # Lint
 lint = ["ruff-*", "+cspell"]
 ruff-format = "uvx ruff format ${@:-.}"
@@ -79,20 +84,20 @@ ruff-lint = "uvx ruff check --fix ${@:-.}"
 cspell = "npx --yes cspell lint --unique --gitignore --exclude '**/_vendor/**' '**/*.{py,txt,md,markdown}' "
 
 # Type Check
-types = ["pyright", "mypy"]
-pyright = "npx --yes pyright --pythonversion ${PYTHON_VERSION:-3.9} src test"
+types = ["+ty", "pyrefly", "+pyright", "mypy"]
+ty = "uvx ty check --python-version ${PYTHON_VERSION:-3.10}"
+pyrefly = "uvx pyrefly check --python-version ${PYTHON_VERSION:-3.10}"
+pyright = "npx --yes pyright --pythonversion ${PYTHON_VERSION:-3.10} src test"
 mypy = """
   mypy \
     --strict \
     --install-types \
     --non-interactive \
     --exclude '/_vendor/' \
-    --python-version ${PYTHON_VERSION:-3.9} \
+    --exclude '/.venv/' \
+    --python-version ${PYTHON_VERSION:-3.10} \
     src test
 """
-ty = "uvx ty check --python-version ${PYTHON_VERSION:-3.9}"
-pyrefly = "uvx pyrefly check --python-version ${PYTHON_VERSION:-3.9}"
-
 
 # Test
 test.help = "run unit tests"
@@ -103,7 +108,9 @@ test.shell = """
       --doctest-modules \
       --doctest-ignore-import-errors \
       "--ignore-glob=*/_vendor/*" \
-      $@ src test;
+      "--ignore-glob=*/.venv/*" \
+      -o log_cli_level=DEBUG \
+      $@ src test &&
   coverage report --omit='src/cog_helpers.py,*/_vendor/*' -m
 """
 
@@ -117,7 +124,7 @@ cog = "cog -r README.md"
 pdoc = """
   rm -rf docs;
   mkdir -p docs;
-  pdoc \
+  pdoc3 \
     --html \
     --output-dir docs \
     --config sort_identifiers=False \
@@ -139,23 +146,9 @@ dev-all.shell = """
   do
     PYTHON_VERSION=$v
     uv run --isolated --all-extras --python $v -- ds types test;
-    if [[ $? != 0 ]]; then
-      exit $?;
-    fi;
+    if [[ $? != 0 ]]; then exit $?; fi;
     echo;
   done;
-"""
-
-# Build
-build = "uv build"
-clean = """
-  rm -rf .mypy_cache;
-  rm -rf .pytest_cache;
-  rm -rf .ruff_cache;
-  rm -rf dist;
-  rm -rf htmlcov;
-  rm -rf src/*.egg-info
-  rm -rf .coverage;
 """
 
 # Release

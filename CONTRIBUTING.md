@@ -59,6 +59,12 @@ Update top-most `__init__.py`:
 __version__ = "X.0.1"
 ```
 
+Update `pyproject.toml`:
+
+```toml
+version = "X.0.1"
+```
+
 Update `CHANGELOG.md`. To see recently closed issues run:
 
 ```bash

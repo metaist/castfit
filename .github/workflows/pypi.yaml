@@ -7,22 +7,29 @@ on:
 jobs:
   pypi-publish:
     runs-on: ubuntu-latest
+    environment:
+      name: pypi
 
     permissions:
       id-token: write
+      contents: read
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --all-extras --dev
+        run: |
+          uv sync --all-extras --dev
+          uv toll install ds-run
 
       - name: Build package
-        run: uv build
+        run: ds build
 
       - name: Publish package
-        uses: pypa/gh-action-pypi-publish@2f6f737ca5f74c637829c0f5c3acd0e29ea5e8bf
+        run: uv publish
