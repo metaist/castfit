@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from dataclasses import field
 from types import FunctionType
+from types import UnionType
 from typing import Any
 from typing import Literal
 from typing import Union
@@ -10,7 +11,6 @@ import sys
 
 # pkg
 from castfit import TypeInfo
-from castfit import UnionType
 import castfit
 
 
@@ -67,13 +67,15 @@ def test_type_literal() -> None:
 def test_type_union() -> None:
     """`Union` type info."""
     assert castfit.type_info(Union) == TypeInfo(name="Union", hint=Union, origin=Union)
-    if sys.version_info >= (3, 10):
+
+    # TODO 2029-10-31 @ py3.13 EOL: remove conditional
+    if sys.version_info >= (3, 14):
         assert castfit.type_info(UnionType) == TypeInfo(
-            name="UnionType", hint=UnionType, origin=UnionType
+            name="Union", hint=UnionType, origin=UnionType
         )
     else:
         assert castfit.type_info(UnionType) == TypeInfo(
-            name="_UnionGenericAlias", hint=UnionType, origin=UnionType
+            name="UnionType", hint=UnionType, origin=UnionType
         )
     assert castfit.type_info(Union[str, int]) == TypeInfo(
         name="Union", hint=Union[str, int], origin=Union, args=(str, int)

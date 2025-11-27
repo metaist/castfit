@@ -1,4 +1,5 @@
 # std
+from types import NoneType
 from typing import Any
 from typing import Callable
 from typing import Generic
@@ -8,11 +9,9 @@ from typing import Optional
 from typing import Sequence
 from typing import TypeVar
 from typing import Union
-import sys
 
 # pkg
 from castfit import Never
-from castfit import NoneType
 import castfit
 
 
@@ -108,9 +107,7 @@ def test_union() -> None:
     assert castfit.is_subtype(str, Union[str, int, bool])
     assert castfit.is_subtype(Union[str, int], Union[str, int, bool])
     assert not castfit.is_subtype(Union[str, None], Union[str, int, bool])
-
-    if sys.version_info >= (3, 10):
-        assert castfit.is_subtype(str, str | int)
+    assert castfit.is_subtype(str, str | int)
 
 
 def test_callable() -> None:

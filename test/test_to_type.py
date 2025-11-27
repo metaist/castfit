@@ -4,19 +4,19 @@ from dataclasses import field
 from datetime import datetime
 from datetime import timezone
 from pathlib import Path
+from types import NoneType
 from typing import Any
 from typing import Callable
 from typing import Literal
 from typing import Optional
 from typing import Union
-import sys
 
 # lib
 from pytest import raises  # type: ignore
 
 # pkg
+# TODO 2026-10-31 @ py3.10 EOL: from typing import Never
 from castfit import Never
-from castfit import NoneType
 import castfit
 
 
@@ -84,12 +84,9 @@ def test_union() -> None:
         castfit.to_type(None, Union[int, float])
 
 
-# TODO 2025-10-31 @ py3.9 EOL: remove conditional
-if sys.version_info >= (3, 10):
-
-    def test_union_type() -> None:
-        """Any of a `UnionType` args can match."""
-        assert castfit.to_type(42, str | float) == "42"
+def test_union_type() -> None:
+    """Any of a `UnionType` args can match."""
+    assert castfit.to_type(42, str | float) == "42"
 
 
 def test_str_to_int() -> None:

@@ -19,6 +19,8 @@ from inspect import Parameter
 from inspect import signature
 from types import BuiltinFunctionType
 from types import FunctionType
+from types import NoneType
+from types import UnionType
 from typing import Any
 from typing import Callable
 from typing import cast
@@ -39,13 +41,6 @@ from typing import Union
 import logging
 import sys
 
-# TODO 2025-10-31 @ py3.9 EOL: move imports above
-if sys.version_info >= (3, 10):  # pragma: no cover
-    from types import NoneType
-    from types import UnionType
-else:  # pragma: no cover
-    NoneType = type(None)  # same as `types.NoneType`
-    UnionType = type(Union[int, str])  # workaround
 
 # TODO 2026-10-31 @ py3.10 EOL: move imports above
 if sys.version_info >= (3, 11):  # pragma: no cover
@@ -89,6 +84,9 @@ __all__ = [
     "to_type",
     "casts",
     "castfit",
+    #
+    # Internals
+    "Never",
 ]
 
 __version__ = "0.1.2"

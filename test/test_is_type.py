@@ -7,7 +7,6 @@ from typing import Literal
 from typing import NoReturn
 from typing import Optional
 from typing import Union
-import sys
 
 # pkg
 import castfit
@@ -69,12 +68,9 @@ def test_union() -> None:
     assert not castfit.is_type(42, Union[str, float])
 
 
-# TODO 2025-10-31 @ py3.9 EOL: remove conditional
-if sys.version_info >= (3, 10):
-
-    def test_union_type() -> None:
-        """Any of a `UnionType` args can match."""
-        assert castfit.is_type(42, int | str)
+def test_union_type() -> None:
+    """Any of a `UnionType` args can match."""
+    assert castfit.is_type(42, int | str)
 
 
 def test_callable() -> None:

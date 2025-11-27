@@ -94,6 +94,7 @@ mypy = """
     --install-types \
     --non-interactive \
     --exclude '/_vendor/' \
+    --exclude '/.venv/' \
     --python-version ${PYTHON_VERSION:-3.10} \
     src test
 """
@@ -107,6 +108,7 @@ test.shell = """
       --doctest-modules \
       --doctest-ignore-import-errors \
       "--ignore-glob=*/_vendor/*" \
+      "--ignore-glob=*/.venv/*" \
       -o log_cli_level=DEBUG \
       $@ src test &&
   coverage report --omit='src/cog_helpers.py,*/_vendor/*' -m
