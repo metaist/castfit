@@ -32,4 +32,4 @@ jobs:
         run: ds build
 
       - name: Publish package
-        uses: uv publish
+        run: uv publish
