@@ -116,23 +116,23 @@ def test_union() -> None:
 def test_callable() -> None:
     assert not castfit.is_subtype(Callable[..., bool], bool), "right not Callable"
 
-    assert not castfit.is_subtype(Callable[[int], bool], Callable[[int], str]), (
-        "different return"
-    )
+    assert not castfit.is_subtype(
+        Callable[[int], bool], Callable[[int], str]
+    ), "different return"
 
-    assert castfit.is_subtype(Callable[..., bool], Callable[[int], bool]), (
-        "left Ellipsis always matches"
-    )
-    assert not castfit.is_subtype(Callable[[int], bool], Callable[..., bool]), (
-        "right Ellipsis never matches"
-    )
+    assert castfit.is_subtype(
+        Callable[..., bool], Callable[[int], bool]
+    ), "left Ellipsis always matches"
+    assert not castfit.is_subtype(
+        Callable[[int], bool], Callable[..., bool]
+    ), "right Ellipsis never matches"
 
-    assert not castfit.is_subtype(Callable[[int], bool], Callable[[int, str], bool]), (
-        "wrong arg length"
-    )
-    assert not castfit.is_subtype(Callable[[int, str], bool], Callable[[int], bool]), (
-        "wrong arg length"
-    )
+    assert not castfit.is_subtype(
+        Callable[[int], bool], Callable[[int, str], bool]
+    ), "wrong arg length"
+    assert not castfit.is_subtype(
+        Callable[[int, str], bool], Callable[[int], bool]
+    ), "wrong arg length"
 
     assert castfit.is_subtype(Callable[[Any], bool], Callable[[int], bool])
     assert not castfit.is_subtype(Callable[[int], bool], Callable[[Any], bool])
@@ -171,9 +171,9 @@ def test_generics() -> None:
 
     assert castfit.is_subtype(Sequence[Dog], Sequence[Animal])
     assert castfit.is_subtype(Mapping[Dog, Dog], Mapping[Dog, Animal])
-    assert not castfit.is_subtype(Mapping[Dog, Dog], Mapping[Animal, Animal]), (
-        "keys are invariant"
-    )
+    assert not castfit.is_subtype(
+        Mapping[Dog, Dog], Mapping[Animal, Animal]
+    ), "keys are invariant"
 
     T = TypeVar("T")
     T_co = TypeVar("T_co", covariant=True)
