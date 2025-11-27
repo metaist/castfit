@@ -19,6 +19,40 @@ These are changes that are on `main` that are not yet in `prod`.
 
 ---
 
+[#23]: https://github.com/metaist/castfit/issues/23
+[#33]: https://github.com/metaist/castfit/issues/33
+[#34]: https://github.com/metaist/castfit/issues/34
+[#35]: https://github.com/metaist/castfit/issues/35
+[#36]: https://github.com/metaist/castfit/issues/36
+[#37]: https://github.com/metaist/castfit/issues/37
+[#40]: https://github.com/metaist/castfit/issues/40
+[0.1.3]: https://github.com/metaist/castfit/compare/0.1.2...0.1.3
+
+## [0.1.3] - 2025-11-27T03:12:11Z
+
+**Changed**
+
+- [#33] PyPI publishing to support newer `uv build` metadata
+- [#40] PyPI publishing to use `uv publish` instead of `pypa/gh-action-pypi-publish`
+
+**Added**
+
+- [#23] ability to type check `Callable` via `is_subtype`
+- [#34] support for `property` fields on classes
+- [#35] `__name__` to `TypeInfo` if present
+- [#36] support for default values in `dataclasses.Field`
+- [#37] support for function definitions in classes
+
+**Removed**
+
+- [#40] support for python 3.9
+
+**Security**
+
+- [#40] We are trying out `uv publish` instead of `pypa/gh-action-pypi-publish`.
+
+---
+
 [#2]: https://github.com/metaist/castfit/issues/2
 [#3]: https://github.com/metaist/castfit/issues/3
 [#4]: https://github.com/metaist/castfit/issues/4

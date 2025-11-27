@@ -207,8 +207,14 @@ True
 True
 </code></pre></div>
 </dd>
+<dt id="castfit.setkeys"><code class="name flex">
+<span>def <span class="ident">setkeys</span></span>(<span>d: dict[Any, Any], *values: dict[Any, Any], **extra: Any) ‑> dict[typing.Any, typing.Any]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return <code>dict</code> that has been updated by <code>values</code> and <code>extra</code>.</p></div>
+</dd>
 <dt id="castfit.setattrs"><code class="name flex">
-<span>def <span class="ident">setattrs</span></span>(<span>obj: T, values: Union[dict[str, Any], None] = None, **extra: Any) ‑> ~T</span>
+<span>def <span class="ident">setattrs</span></span>(<span>obj: T, *values: dict[str, Any], **extra: Any) ‑> ~T</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Like <code>setattr()</code> but for multiple values and returns the object.</p></div>
@@ -218,6 +224,15 @@ True
 </code></dt>
 <dd>
 <div class="desc"><p>Return type information about <code>item</code>.</p>
+<p>This function is similar to <code>builtins.type</code> except that it returns an
+object that which includes additional metadata.</p>
+<p>When <code>item</code> has an origin, we return:</p>
+<ul>
+<li><code>origin</code> (from <code>typing.get_origin</code>)</li>
+<li><code>args</code> (from <code>typing.get_args</code>)</li>
+</ul>
+<p>For special forms (<code>Any</code>, <code>Literal</code>, <code>Union</code>, etc.) and classes we set
+<code>origin</code> to be the item.</p>
 <h2 id="args">Args</h2>
 <dl>
 <dt><strong><code>item</code></strong> :&ensp;<code>Any</code></dt>
@@ -239,17 +254,68 @@ stored in the local cache.</dd>
 </code></dt>
 <dd>
 <div class="desc"><p>Returns names and inferred types for <code>item</code>.</p>
-<p>See: <a href="https://docs.python.org/3/library/typing.html#typing.get_type_hints"><code>typing.get_type_hints</code></a></p>
+<p>This function merges some of the behavior of <code>typing.get_type_hints</code> for
+classes and <code>inspect.signature</code> for other callables.</p>
 <h2 id="args">Args</h2>
 <dl>
 <dt><strong><code>item</code></strong> :&ensp;<code>type[T] | Callable[..., Any]</code></dt>
 <dd>a class, lambda, or function</dd>
 </dl>
 <h2 id="returns">Returns</h2>
+<p>(dict[str, TypeInfo]): mapping of field/parameter names to hint information
+See:</p>
+<ul>
+<li><a href="https://docs.python.org/3/library/typing.html#typing.get_type_hints"><code>typing.get_type_hints</code></a></li>
+<li><a href="https://docs.python.org/3/library/inspect.html#inspect.signature"><code>inspect.signature</code></a></li>
+</ul></div>
+</dd>
+<dt id="castfit.is_subtype"><code class="name flex">
+<span>def <span class="ident">is_subtype</span></span>(<span>left: <a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a>[T], right: <a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a>[K], *, covariant: bool = False, contravariant: bool = False, implicit: bool = True) ‑> bool</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return <code>True</code> if <code>left</code> is a subtype of <code>right</code>.</p>
+<p>In many ways this function is an extension of <code>issubclass</code> to
+certain special forms:</p>
+<ul>
+<li><code>Any</code></li>
+<li><code>Never</code>, <code>NoReturn</code></li>
+<li><code>NoneType</code></li>
+<li><code>Literal</code></li>
+<li><code>Union</code>, <code>UnionType</code></li>
+<li><code>Callable</code></li>
+<li><code>Sequence</code>, <code>Mapping</code>, <code>list</code>, <code>dict</code>, <code>set</code>, <code>tuple</code></li>
+<li><code>Generic</code> (using <code>TypeVar</code> to set <code>covariant</code> and <code>contravariant</code>)</li>
+</ul>
+<p><strong>NOTE</strong>: This is not an exhaustive type checker.</p>
+<p>This function also supports variance comparisons:
+- implicit (default enabled): <code>left</code> is a numeric subtype of <code>right</code> as defined by PEP 3141
+- invariant (default enabled): <code>left</code> and <code>right</code> must match exactly (unless implicit matched first)
+- covariant (default disabled): <code>left</code> is a subclass of <code>right</code>
+- contravariant (default disabled): <code>left</code> is a superclass of <code>right</code></p>
+<h2 id="args">Args</h2>
 <dl>
-<dt><code>dict[str, <a title="castfit.TypeInfo" href="#castfit.TypeInfo">TypeInfo</a>]</code></dt>
-<dd>mapping of field/parameter names to hint information</dd>
-</dl></div>
+<dt><strong><code>left</code></strong> :&ensp;<code><a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a>[T]</code></dt>
+<dd>a supported type form.</dd>
+<dt><strong><code>right</code></strong> :&ensp;<code><a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a>[K]</code></dt>
+<dd>a supported type form.</dd>
+<dt><strong><code>covariant</code></strong> :&ensp;<code>bool</code>, default=<code>False</code></dt>
+<dd>if <code>True</code>, <code>left</code> may be a subclass of <code>right</code>.</dd>
+<dt><strong><code>contravariant</code></strong> :&ensp;<code>bool</code>, default=<code>False</code></dt>
+<dd>if <code>True</code>, <code>left</code> may be a superclass of <code>right</code>.</dd>
+<dt><strong><code>implicit</code></strong> :&ensp;<code>bool</code>, default=<code>True</code></dt>
+<dd>if <code>True</code>, support the PEP 3141 numeric tower implicit
+conversions, even when otherwise invariant comparisons are being made.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>bool</code></dt>
+<dd><code>True</code> if <code>left</code> is a subtype of <code>right</code>, <code>False</code> otherwise.</dd>
+</dl>
+<h2 id="see">See</h2>
+<ul>
+<li><a href="https://docs.python.org/3/library/functions.html#issubclass"><code>issubclass</code></a></li>
+<li><a href="https://peps.python.org/pep-3141/">PEP 3141 - A Type Hierarchy for Numbers</a></li>
+</ul></div>
 </dd>
 <dt id="castfit.is_type"><code class="name flex">
 <span>def <span class="ident">is_type</span></span>(<span>value: Any, kind: <a title="castfit.TypeForm" href="#castfit.TypeForm">TypeForm</a>[T]) ‑> bool</span>
@@ -402,7 +468,7 @@ class TypeInfo:
 <dd>
 <div class="desc"><p>Name of the field or parameter.</p></div>
 </dd>
-<dt id="castfit.TypeInfo.hint"><code class="name">var <span class="ident">hint</span> : Union[type[Any], Any]</code></dt>
+<dt id="castfit.TypeInfo.hint"><code class="name">var <span class="ident">hint</span> : type[Any] | Any</code></dt>
 <dd>
 <div class="desc"><p>Type hint or inferred type.</p></div>
 </dd>
@@ -442,9 +508,11 @@ class TypeInfo:
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="two-column">
 <li><code><a title="castfit.iterate" href="#castfit.iterate">iterate</a></code></li>
+<li><code><a title="castfit.setkeys" href="#castfit.setkeys">setkeys</a></code></li>
 <li><code><a title="castfit.setattrs" href="#castfit.setattrs">setattrs</a></code></li>
 <li><code><a title="castfit.type_info" href="#castfit.type_info">type_info</a></code></li>
 <li><code><a title="castfit.type_hints" href="#castfit.type_hints">type_hints</a></code></li>
+<li><code><a title="castfit.is_subtype" href="#castfit.is_subtype">is_subtype</a></code></li>
 <li><code><a title="castfit.is_type" href="#castfit.is_type">is_type</a></code></li>
 <li><code><a title="castfit.to_type" href="#castfit.to_type">to_type</a></code></li>
 <li><code><a title="castfit.casts" href="#castfit.casts">casts</a></code></li>

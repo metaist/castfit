@@ -89,8 +89,8 @@ __all__ = [
     "Never",
 ]
 
-__version__ = "0.1.2"
-__pubdate__ = "2025-05-21T20:54:51Z"
+__version__ = "0.1.3"
+__pubdate__ = "2025-11-27T03:12:11Z"
 
 log = logging.getLogger(__name__)
 """Global logger."""
